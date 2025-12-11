@@ -1,13 +1,13 @@
-import type { Metadata } from "next";
-import { Inter } from "next/font/google";
-import "./globals.css";
-import { ThemeProvider } from "@/components/ui/theme-provider";
+import type { Metadata } from 'next';
+import { Inter } from 'next/font/google';
+import './globals.css';
+import { ThemeProvider } from '@/components/ui/theme-provider';
 
-const inter = Inter({ subsets: ["latin"] });
+const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: "Meetings Transcript - Transcrição de Áudios",
-  description: "Transcreva áudios de arquivos, YouTube ou gravações ao vivo com IA.",
+  title: 'Meetings Transcript - Transcrição de Áudios',
+  description: 'Transcreva áudios de arquivos, YouTube ou gravações ao vivo com IA.',
 };
 
 export default function RootLayout({

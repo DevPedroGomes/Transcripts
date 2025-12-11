@@ -1,10 +1,9 @@
-"use client";
+'use client';
 
-import { useCallback, useState } from "react";
-import { useDropzone } from "react-dropzone";
-import { Upload, X, AlertCircle } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
+import { useCallback, useRef, useState } from 'react';
+import { Upload, X, AlertCircle } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Progress } from '@/components/ui/progress';
 
 interface FileUploaderProps {
   onFileChange: (file: File | null) => void;
@@ -17,30 +16,42 @@ export function FileUploader({
   onFileChange,
   onError,
   maxSizeMB = 500,
-  acceptedFileTypes = [".mp3", ".wav", ".m4a", ".ogg"],
+  acceptedFileTypes = ['.mp3', '.wav', '.m4a', '.ogg'],
 }: FileUploaderProps) {
   const [file, setFile] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [isDragActive, setIsDragActive] = useState(false);
+  const inputRef = useRef<HTMLInputElement | null>(null);
   const maxSize = maxSizeMB * 1024 * 1024; // em bytes
 
-  const onDrop = useCallback(
-    (acceptedFiles: File[]) => {
-      const uploadedFile = acceptedFiles[0];
+  const handleFiles = useCallback(
+    (incoming?: FileList | File[]) => {
+      const uploadedFile = incoming?.[0];
+      if (!uploadedFile) return;
 
-      if (uploadedFile) {
-        if (uploadedFile.size > maxSize) {
-          const errorMsg = `O arquivo é muito grande. O tamanho máximo é ${maxSizeMB}MB.`;
-          setError(errorMsg);
-          if (onError) onError(errorMsg);
-          return;
-        }
+      const isAcceptedType = acceptedFileTypes.some((type) =>
+        uploadedFile.name.toLowerCase().endsWith(type.toLowerCase())
+      );
 
-        setFile(uploadedFile);
-        setError(null);
-        onFileChange(uploadedFile);
+      if (!isAcceptedType) {
+        const errorMsg = `Formato não suportado. Tipos permitidos: ${acceptedFileTypes.join(', ')}`;
+        setError(errorMsg);
+        if (onError) onError(errorMsg);
+        return;
       }
+
+      if (uploadedFile.size > maxSize) {
+        const errorMsg = `O arquivo é muito grande. O tamanho máximo é ${maxSizeMB}MB.`;
+        setError(errorMsg);
+        if (onError) onError(errorMsg);
+        return;
+      }
+
+      setFile(uploadedFile);
+      setError(null);
+      onFileChange(uploadedFile);
     },
-    [maxSize, maxSizeMB, onError, onFileChange]
+    [acceptedFileTypes, maxSize, maxSizeMB, onError, onFileChange]
   );
 
   const removeFile = () => {
@@ -49,40 +60,61 @@ export function FileUploader({
     onFileChange(null);
   };
 
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({
-    onDrop,
-    maxFiles: 1,
-    accept: {
-      "audio/mpeg": [],
-      "audio/wav": [],
-      "audio/x-m4a": [],
-      "audio/ogg": [],
-    },
-  });
-
   const formatFileSize = (bytes: number) => {
-    if (bytes < 1024) return bytes + " bytes";
-    else if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
-    else return (bytes / (1024 * 1024)).toFixed(1) + " MB";
+    if (bytes < 1024) return bytes + ' bytes';
+    else if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    else return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+  };
+
+  const handleDrop = (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    setIsDragActive(false);
+    if (event.dataTransfer.files?.length) {
+      handleFiles(event.dataTransfer.files);
+    }
   };
 
   return (
     <div className="w-full">
       {!file ? (
         <div
-          {...getRootProps()}
           className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
-            isDragActive ? "border-primary bg-primary/10" : "border-gray-300 hover:border-primary/50"
+            isDragActive
+              ? 'border-primary bg-primary/10'
+              : 'border-gray-300 hover:border-primary/50'
           }`}
+          onClick={() => inputRef.current?.click()}
+          onDragOver={(event) => {
+            event.preventDefault();
+            setIsDragActive(true);
+          }}
+          onDragEnter={(event) => {
+            event.preventDefault();
+            setIsDragActive(true);
+          }}
+          onDragLeave={(event) => {
+            event.preventDefault();
+            setIsDragActive(false);
+          }}
+          onDrop={handleDrop}
+          role="presentation"
         >
-          <input {...getInputProps()} />
+          <input
+            type="file"
+            className="hidden"
+            onChange={(event) => handleFiles(event.target.files || undefined)}
+            accept={acceptedFileTypes.join(',')}
+            ref={inputRef}
+          />
           <div className="flex flex-col items-center justify-center">
             <Upload className="h-10 w-10 text-gray-400 mb-4" />
             <p className="mb-2 text-sm font-semibold">
-              {isDragActive ? "Solte o arquivo aqui" : "Clique para fazer upload ou arraste e solte"}
+              {isDragActive
+                ? 'Solte o arquivo aqui'
+                : 'Clique para fazer upload ou arraste e solte'}
             </p>
             <p className="text-xs text-gray-500">
-              {acceptedFileTypes.join(", ")} (Max. {maxSizeMB}MB)
+              {acceptedFileTypes.join(', ')} (Max. {maxSizeMB}MB)
             </p>
           </div>
         </div>
@@ -98,12 +130,7 @@ export function FileUploader({
                 <p className="text-xs text-gray-500">{formatFileSize(file.size)}</p>
               </div>
             </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-8 w-8 p-0"
-              onClick={removeFile}
-            >
+            <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={removeFile}>
               <X className="h-4 w-4" />
               <span className="sr-only">Remover arquivo</span>
             </Button>
@@ -120,4 +147,4 @@ export function FileUploader({
       )}
     </div>
   );
-} 
+}

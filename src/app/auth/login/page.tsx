@@ -1,17 +1,17 @@
-"use client";
+'use client';
 
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import Link from "next/link";
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { signIn } from "@/lib/supabase/auth";
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import Link from 'next/link';
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { signIn } from '@/lib/supabase/auth';
 
 export default function Login() {
   const router = useRouter();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -22,9 +22,9 @@ export default function Login() {
 
     try {
       await signIn({ email, password });
-      router.push("/dashboard");
+      router.push('/dashboard');
     } catch (err) {
-      setError("Falha ao fazer login. Verifique suas credenciais.");
+      setError('Falha ao fazer login. Verifique suas credenciais.');
       console.error(err);
     } finally {
       setLoading(false);
@@ -41,11 +41,7 @@ export default function Login() {
 
         <div className="bg-white dark:bg-gray-800 p-8 shadow rounded-lg">
           <form onSubmit={handleLogin} className="space-y-6">
-            {error && (
-              <div className="bg-red-50 text-red-700 p-3 rounded-md text-sm">
-                {error}
-              </div>
-            )}
+            {error && <div className="bg-red-50 text-red-700 p-3 rounded-md text-sm">{error}</div>}
 
             <div className="space-y-1">
               <Label htmlFor="email">Email</Label>
@@ -77,13 +73,13 @@ export default function Login() {
             </div>
 
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? "Entrando..." : "Entrar"}
+              {loading ? 'Entrando...' : 'Entrar'}
             </Button>
           </form>
 
           <div className="mt-6 text-center text-sm">
             <p>
-              Não tem uma conta?{" "}
+              Não tem uma conta?{' '}
               <Link href="/auth/signup" className="text-primary hover:underline">
                 Cadastre-se
               </Link>
@@ -99,4 +95,4 @@ export default function Login() {
       </div>
     </div>
   );
-} 
+}

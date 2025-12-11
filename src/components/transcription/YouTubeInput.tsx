@@ -1,18 +1,19 @@
-"use client";
+'use client';
 
-import { useState } from "react";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { AlertCircle, Youtube } from "lucide-react";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { useState } from 'react';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { AlertCircle, Youtube } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 interface YouTubeInputProps {
   onUrlChange: (url: string) => void;
   onError?: (error: string) => void;
+  inputId?: string;
 }
 
-export function YouTubeInput({ onUrlChange, onError }: YouTubeInputProps) {
-  const [url, setUrl] = useState("");
+export function YouTubeInput({ onUrlChange, onError, inputId }: YouTubeInputProps) {
+  const [url, setUrl] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isValid, setIsValid] = useState(false);
   const [thumbnail, setThumbnail] = useState<string | null>(null);
@@ -32,18 +33,18 @@ export function YouTubeInput({ onUrlChange, onError }: YouTubeInputProps) {
   const handleUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newUrl = e.target.value;
     setUrl(newUrl);
-    
+
     if (!newUrl) {
       setError(null);
       setIsValid(false);
       setThumbnail(null);
       setVideoTitle(null);
-      onUrlChange("");
+      onUrlChange('');
       return;
     }
-    
+
     if (!isValidYouTubeUrl(newUrl)) {
-      const errorMsg = "Por favor, insira uma URL válida do YouTube";
+      const errorMsg = 'Por favor, insira uma URL válida do YouTube';
       setError(errorMsg);
       setIsValid(false);
       setThumbnail(null);
@@ -51,18 +52,18 @@ export function YouTubeInput({ onUrlChange, onError }: YouTubeInputProps) {
       if (onError) onError(errorMsg);
       return;
     }
-    
+
     setError(null);
     setIsValid(true);
     onUrlChange(newUrl);
-    
+
     // Em um aplicativo real, você pode buscar os metadados do vídeo
     // usando a API do YouTube para mostrar uma prévia
     const videoId = extractVideoId(newUrl);
     if (videoId) {
       setThumbnail(`https://img.youtube.com/vi/${videoId}/0.jpg`);
       // Simular título do vídeo
-      setVideoTitle("Título do vídeo do YouTube");
+      setVideoTitle('Título do vídeo do YouTube');
     }
   };
 
@@ -70,32 +71,33 @@ export function YouTubeInput({ onUrlChange, onError }: YouTubeInputProps) {
     <div className="space-y-4">
       <div className="flex w-full max-w-sm items-center space-x-2">
         <Input
+          id={inputId}
           type="text"
           placeholder="https://www.youtube.com/watch?v=..."
           value={url}
           onChange={handleUrlChange}
           className={
-            error ? "border-red-500 focus-visible:ring-red-500" : isValid ? "border-green-500" : ""
+            error ? 'border-red-500 focus-visible:ring-red-500' : isValid ? 'border-green-500' : ''
           }
         />
         <Button type="button" disabled={!isValid}>
           Verificar
         </Button>
       </div>
-      
+
       {error && (
         <div className="flex items-center gap-2 text-red-500 text-sm">
           <AlertCircle className="h-4 w-4" />
           <span>{error}</span>
         </div>
       )}
-      
+
       {thumbnail && (
         <div className="border rounded-lg overflow-hidden">
           <div className="relative aspect-video">
-            <img 
-              src={thumbnail} 
-              alt={videoTitle || "Thumbnail do vídeo"} 
+            <img
+              src={thumbnail}
+              alt={videoTitle || 'Thumbnail do vídeo'}
               className="w-full h-full object-cover"
             />
             <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
@@ -110,7 +112,7 @@ export function YouTubeInput({ onUrlChange, onError }: YouTubeInputProps) {
           </div>
         </div>
       )}
-      
+
       <Alert className="bg-blue-50 text-blue-800 border-blue-200">
         <AlertDescription>
           A transcrição de vídeos longos pode levar mais tempo. Recomendamos vídeos de até 2 horas.
@@ -118,4 +120,4 @@ export function YouTubeInput({ onUrlChange, onError }: YouTubeInputProps) {
       </Alert>
     </div>
   );
-} 
+}

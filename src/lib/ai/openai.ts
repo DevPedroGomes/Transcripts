@@ -1,12 +1,12 @@
-import { ChatOpenAI } from "@langchain/openai";
-import { StringOutputParser } from "langchain/schema/output_parser";
-import { PromptTemplate } from "langchain/prompts";
-import { RunnableSequence } from "langchain/schema/runnable";
+import { ChatOpenAI } from '@langchain/openai';
+import { StringOutputParser } from '@langchain/core/output_parsers';
+import { PromptTemplate } from '@langchain/core/prompts';
+import { RunnableSequence } from '@langchain/core/runnables';
 
 // Configurar cliente OpenAI com API key
 const model = new ChatOpenAI({
-  openAIApiKey: process.env.OPENAI_API_KEY,
-  modelName: "gpt-4-turbo",
+  apiKey: process.env.OPENAI_API_KEY,
+  model: 'gpt-4o-mini',
   temperature: 0.5,
 });
 
@@ -35,7 +35,9 @@ export async function processTranscriptionWithAI(rawTranscription: string, promp
     // Processar a transcrição com o pipeline LangChain
     const result = await transcriptionChain.invoke({
       transcription: rawTranscription,
-      prompt: prompt || "Faça um resumo estruturado da conversa, destacando pontos importantes e ações a serem tomadas",
+      prompt:
+        prompt ||
+        'Faça um resumo estruturado da conversa, destacando pontos importantes e ações a serem tomadas',
     });
 
     return result;
@@ -43,4 +45,4 @@ export async function processTranscriptionWithAI(rawTranscription: string, promp
     console.error('Erro ao processar transcrição com AI:', error);
     throw new Error('Falha ao processar transcrição com IA');
   }
-} 
+}

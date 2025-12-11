@@ -22,16 +22,9 @@ export type Plan = {
   };
 };
 
-export type TranscriptionStatus = 
-  | 'pending'
-  | 'processing'
-  | 'completed'
-  | 'failed';
+export type TranscriptionStatus = 'pending' | 'processing' | 'completed' | 'failed';
 
-export type TranscriptionSource = 
-  | 'file'
-  | 'youtube'
-  | 'live';
+export type TranscriptionSource = 'file' | 'youtube' | 'live';
 
 export type Transcription = {
   id: string;
@@ -56,4 +49,4 @@ export type TranscriptionSegment = {
   start: number;
   end: number;
   text: string;
-}; 
+};

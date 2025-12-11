@@ -4,4 +4,4 @@
 require('dotenv').config({ path: '.env.local' });
 require('./dist/server/socket.js');
 
-console.log('Servidor WebSocket iniciado...'); 
+console.log('Servidor WebSocket iniciado...');

@@ -1,18 +1,18 @@
-"use client";
+'use client';
 
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import Link from "next/link";
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { signUp } from "@/lib/supabase/auth";
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import Link from 'next/link';
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { signUp } from '@/lib/supabase/auth';
 
 export default function SignUp() {
   const router = useRouter();
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -26,15 +26,15 @@ export default function SignUp() {
     try {
       await signUp({ name, email, password });
       setSuccessMessage(
-        "Cadastro realizado com sucesso! Verifique seu email para confirmar sua conta."
+        'Cadastro realizado com sucesso! Verifique seu email para confirmar sua conta.'
       );
       // Em um ambiente real, você pode querer esperar a confirmação do email
       // antes de redirecionar para a página de login
       setTimeout(() => {
-        router.push("/auth/login");
+        router.push('/auth/login');
       }, 3000);
     } catch (err) {
-      setError("Falha ao criar conta. Verifique os dados e tente novamente.");
+      setError('Falha ao criar conta. Verifique os dados e tente novamente.');
       console.error(err);
     } finally {
       setLoading(false);
@@ -51,11 +51,7 @@ export default function SignUp() {
 
         <div className="bg-white dark:bg-gray-800 p-8 shadow rounded-lg">
           <form onSubmit={handleSignUp} className="space-y-6">
-            {error && (
-              <div className="bg-red-50 text-red-700 p-3 rounded-md text-sm">
-                {error}
-              </div>
-            )}
+            {error && <div className="bg-red-50 text-red-700 p-3 rounded-md text-sm">{error}</div>}
 
             {successMessage && (
               <div className="bg-green-50 text-green-700 p-3 rounded-md text-sm">
@@ -98,19 +94,17 @@ export default function SignUp() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
               />
-              <p className="text-xs text-gray-500 mt-1">
-                A senha deve ter pelo menos 8 caracteres
-              </p>
+              <p className="text-xs text-gray-500 mt-1">A senha deve ter pelo menos 8 caracteres</p>
             </div>
 
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? "Cadastrando..." : "Cadastrar"}
+              {loading ? 'Cadastrando...' : 'Cadastrar'}
             </Button>
           </form>
 
           <div className="mt-6 text-center text-sm">
             <p>
-              Já tem uma conta?{" "}
+              Já tem uma conta?{' '}
               <Link href="/auth/login" className="text-primary hover:underline">
                 Faça login
               </Link>
@@ -126,4 +120,4 @@ export default function SignUp() {
       </div>
     </div>
   );
-} 
+}

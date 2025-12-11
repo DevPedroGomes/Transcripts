@@ -1,82 +1,89 @@
-"use client";
+'use client';
 
-import { Button } from "@/components/ui/button";
-import Link from "next/link";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Check } from "lucide-react";
-import { useState } from "react";
+import { Button } from '@/components/ui/button';
+import Link from 'next/link';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import { Check } from 'lucide-react';
+import { useState } from 'react';
 
 const plans = [
   {
-    id: "free",
-    name: "Gratuito",
-    description: "Para uso pessoal e teste da plataforma.",
+    id: 'free',
+    name: 'Gratuito',
+    description: 'Para uso pessoal e teste da plataforma.',
     price: 0,
-    priceId: "",
+    priceId: '',
     features: [
-      "5 transcrições por mês",
-      "Arquivos de até 10 minutos",
-      "Análise básica com IA",
-      "Exportação em TXT",
-      "100MB de armazenamento",
+      '5 transcrições por mês',
+      'Arquivos de até 10 minutos',
+      'Análise básica com IA',
+      'Exportação em TXT',
+      '100MB de armazenamento',
     ],
     limits: {
       transcriptions_per_month: 5,
       max_audio_duration_minutes: 10,
       max_storage_gb: 0.1,
     },
-    cta: "Começar grátis",
+    cta: 'Começar grátis',
   },
   {
-    id: "pro",
-    name: "Profissional",
-    description: "Para profissionais que precisam de transcrições regulares.",
+    id: 'pro',
+    name: 'Profissional',
+    description: 'Para profissionais que precisam de transcrições regulares.',
     price: 29,
-    priceId: "price_1abc123def456ghi",
+    priceId: 'price_1abc123def456ghi',
     features: [
-      "30 transcrições por mês",
-      "Arquivos de até 60 minutos",
-      "Análise avançada com IA",
-      "Transcrição ao vivo",
-      "Exportação em TXT, DOC, PDF",
-      "5GB de armazenamento",
-      "Prioridade no suporte",
+      '30 transcrições por mês',
+      'Arquivos de até 60 minutos',
+      'Análise avançada com IA',
+      'Transcrição ao vivo',
+      'Exportação em TXT, DOC, PDF',
+      '5GB de armazenamento',
+      'Prioridade no suporte',
     ],
     limits: {
       transcriptions_per_month: 30,
       max_audio_duration_minutes: 60,
       max_storage_gb: 5,
     },
-    cta: "Assinar plano",
+    cta: 'Assinar plano',
   },
   {
-    id: "business",
-    name: "Empresarial",
-    description: "Para equipes e organizações com alta demanda.",
+    id: 'business',
+    name: 'Empresarial',
+    description: 'Para equipes e organizações com alta demanda.',
     price: 79,
-    priceId: "price_2jkl789mno123pqr",
+    priceId: 'price_2jkl789mno123pqr',
     features: [
-      "100 transcrições por mês",
-      "Arquivos de até 180 minutos",
-      "Análise avançada com IA",
-      "Transcrição ao vivo",
-      "Exportação em todos os formatos",
-      "20GB de armazenamento",
-      "Acesso para equipes (5 usuários)",
-      "API de integração",
-      "Suporte prioritário 24/7",
+      '100 transcrições por mês',
+      'Arquivos de até 180 minutos',
+      'Análise avançada com IA',
+      'Transcrição ao vivo',
+      'Exportação em todos os formatos',
+      '20GB de armazenamento',
+      'Acesso para equipes (5 usuários)',
+      'API de integração',
+      'Suporte prioritário 24/7',
     ],
     limits: {
       transcriptions_per_month: 100,
       max_audio_duration_minutes: 180,
       max_storage_gb: 20,
     },
-    cta: "Contatar vendas",
+    cta: 'Contatar vendas',
   },
 ];
 
 export default function Pricing() {
-  const [billingInterval, setBillingInterval] = useState<"monthly" | "yearly">("monthly");
+  const [billingInterval, setBillingInterval] = useState<'monthly' | 'yearly'>('monthly');
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -105,33 +112,34 @@ export default function Pricing() {
                 Escolha o plano ideal para suas necessidades
               </h1>
               <p className="mx-auto max-w-[700px] text-gray-500 md:text-xl/relaxed">
-                Oferecemos opções para todos os tipos de usuários, desde uso pessoal até empresarial.
+                Oferecemos opções para todos os tipos de usuários, desde uso pessoal até
+                empresarial.
               </p>
             </div>
-            
+
             <div className="flex items-center space-x-2 mt-8">
               <Button
-                variant={billingInterval === "monthly" ? "default" : "outline"}
-                onClick={() => setBillingInterval("monthly")}
+                variant={billingInterval === 'monthly' ? 'default' : 'outline'}
+                onClick={() => setBillingInterval('monthly')}
               >
                 Mensal
               </Button>
               <Button
-                variant={billingInterval === "yearly" ? "default" : "outline"}
-                onClick={() => setBillingInterval("yearly")}
+                variant={billingInterval === 'yearly' ? 'default' : 'outline'}
+                onClick={() => setBillingInterval('yearly')}
               >
                 Anual <span className="ml-1 text-xs">(20% off)</span>
               </Button>
             </div>
           </div>
         </section>
-        
+
         <section className="container pb-12 md:pb-24">
           <div className="grid gap-6 md:grid-cols-3">
             {plans.map((plan) => (
-              <Card key={plan.id} className={plan.id === "pro" ? "border-primary shadow-lg" : ""}>
+              <Card key={plan.id} className={plan.id === 'pro' ? 'border-primary shadow-lg' : ''}>
                 <CardHeader>
-                  {plan.id === "pro" && (
+                  {plan.id === 'pro' && (
                     <p className="text-sm text-primary font-medium mb-2">Mais Popular</p>
                   )}
                   <CardTitle>{plan.name}</CardTitle>
@@ -140,13 +148,14 @@ export default function Pricing() {
                 <CardContent>
                   <div className="mb-4">
                     <span className="text-4xl font-bold">
-                      R$ {billingInterval === "yearly" 
-                        ? Math.floor(plan.price * 0.8) * 12 
+                      R${' '}
+                      {billingInterval === 'yearly'
+                        ? Math.floor(plan.price * 0.8) * 12
                         : plan.price}
                     </span>
                     {plan.price > 0 && (
                       <span className="text-sm text-gray-500 ml-1">
-                        /{billingInterval === "yearly" ? "ano" : "mês"}
+                        /{billingInterval === 'yearly' ? 'ano' : 'mês'}
                       </span>
                     )}
                   </div>
@@ -160,18 +169,20 @@ export default function Pricing() {
                   </ul>
                 </CardContent>
                 <CardFooter>
-                  <Button 
-                    className="w-full" 
-                    variant={plan.id === "pro" ? "default" : "outline"}
+                  <Button
+                    className="w-full"
+                    variant={plan.id === 'pro' ? 'default' : 'outline'}
                     asChild
                   >
-                    <Link href={
-                      plan.id === "free" 
-                        ? "/auth/signup" 
-                        : plan.id === "business" 
-                          ? "/contact" 
-                          : "/auth/signup?plan=pro"
-                    }>
+                    <Link
+                      href={
+                        plan.id === 'free'
+                          ? '/auth/signup'
+                          : plan.id === 'business'
+                            ? '/contact'
+                            : '/auth/signup?plan=pro'
+                      }
+                    >
                       {plan.cta}
                     </Link>
                   </Button>
@@ -180,13 +191,13 @@ export default function Pricing() {
             ))}
           </div>
         </section>
-        
+
         <section className="container pb-24">
           <div className="rounded-lg bg-gray-50 dark:bg-gray-900 p-8 text-center">
             <h2 className="text-2xl font-bold mb-4">Precisa de um plano personalizado?</h2>
             <p className="text-gray-500 mb-6 max-w-xl mx-auto">
-              Para grandes empresas e casos de uso específicos, oferecemos planos personalizados
-              que atendem às suas necessidades exclusivas.
+              Para grandes empresas e casos de uso específicos, oferecemos planos personalizados que
+              atendem às suas necessidades exclusivas.
             </p>
             <Button asChild>
               <Link href="/contact">Fale com nossa equipe</Link>
@@ -203,4 +214,4 @@ export default function Pricing() {
       </footer>
     </div>
   );
-} 
+}

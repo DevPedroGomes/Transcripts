@@ -1,5 +1,5 @@
-import { Button } from "@/components/ui/button";
-import Link from "next/link";
+import { Button } from '@/components/ui/button';
+import Link from 'next/link';
 
 export default function Home() {
   return (
@@ -47,9 +47,18 @@ export default function Home() {
           <div className="grid gap-8 md:grid-cols-3">
             <div className="flex flex-col items-center space-y-4 rounded-lg border p-6">
               <div className="rounded-full bg-primary/10 p-4">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" 
-                  stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" 
-                  className="h-6 w-6 text-primary">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="24"
+                  height="24"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="h-6 w-6 text-primary"
+                >
                   <path d="M21 15V6"></path>
                   <path d="M18.5 18a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z"></path>
                   <path d="M12 12H3"></path>
@@ -64,9 +73,18 @@ export default function Home() {
             </div>
             <div className="flex flex-col items-center space-y-4 rounded-lg border p-6">
               <div className="rounded-full bg-primary/10 p-4">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" 
-                  stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" 
-                  className="h-6 w-6 text-primary">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="24"
+                  height="24"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="h-6 w-6 text-primary"
+                >
                   <path d="m7 18-4-4 4-4"></path>
                   <path d="m17 6 4 4-4 4"></path>
                   <path d="m14 9-4 6"></path>
@@ -79,9 +97,18 @@ export default function Home() {
             </div>
             <div className="flex flex-col items-center space-y-4 rounded-lg border p-6">
               <div className="rounded-full bg-primary/10 p-4">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" 
-                  stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" 
-                  className="h-6 w-6 text-primary">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="24"
+                  height="24"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="h-6 w-6 text-primary"
+                >
                   <circle cx="12" cy="12" r="10"></circle>
                   <circle cx="12" cy="12" r="6"></circle>
                   <circle cx="12" cy="12" r="2"></circle>
@@ -89,7 +116,8 @@ export default function Home() {
               </div>
               <h3 className="text-xl font-bold">Gravação ao Vivo</h3>
               <p className="text-center text-gray-500 dark:text-gray-400">
-                Grave reuniões em tempo real e obtenha a transcrição organizada com análise inteligente.
+                Grave reuniões em tempo real e obtenha a transcrição organizada com análise
+                inteligente.
               </p>
             </div>
           </div>
