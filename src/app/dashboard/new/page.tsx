@@ -12,21 +12,15 @@ import {
 } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { FormEvent, useCallback, useEffect, useState } from 'react';
+import { FormEvent, useCallback, useEffect, useState, Suspense } from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { FileUploader } from '@/components/transcription/FileUploader';
 import { YouTubeInput } from '@/components/transcription/YouTubeInput';
-import dynamic from 'next/dynamic';
 
-const LiveRecorder = dynamic(
-  () => import('@/components/transcription/LiveRecorder').then((mod) => mod.LiveRecorder),
-  { ssr: false }
-);
-
-export default function NewTranscription() {
+function NewTranscriptionContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const typeParam = searchParams.get('type');
@@ -45,16 +39,8 @@ export default function NewTranscription() {
   const [youtubeSuccess, setYoutubeSuccess] = useState<string | null>(null);
   const [isSubmittingYoutube, setIsSubmittingYoutube] = useState(false);
 
-  const [liveTitle, setLiveTitle] = useState('');
-  const [livePrompt, setLivePrompt] = useState('');
-  const [liveTranscriptionId, setLiveTranscriptionId] = useState<string | null>(null);
-  const [liveError, setLiveError] = useState<string | null>(null);
-  const [liveSuccess, setLiveSuccess] = useState<string | null>(null);
-  const [isCreatingLive, setIsCreatingLive] = useState(false);
-  const [isFinishingLive, setIsFinishingLive] = useState(false);
-
   useEffect(() => {
-    if (typeParam && (typeParam === 'file' || typeParam === 'youtube' || typeParam === 'live')) {
+    if (typeParam && (typeParam === 'file' || typeParam === 'youtube')) {
       setActiveTab(typeParam);
     }
   }, [typeParam]);
@@ -186,102 +172,6 @@ export default function NewTranscription() {
     [youtubeTitle, youtubeUrl, youtubePrompt, router]
   );
 
-  const handleCreateLiveSession = useCallback(
-    async (event: FormEvent<HTMLFormElement>) => {
-      event.preventDefault();
-
-      if (liveTranscriptionId) {
-        return;
-      }
-
-      if (!liveTitle.trim()) {
-        setLiveError('Informe um título para a sessão ao vivo.');
-        return;
-      }
-
-      setIsCreatingLive(true);
-      setLiveError(null);
-      setLiveSuccess(null);
-
-      try {
-        const response = await fetch('/api/transcribe/live', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            title: liveTitle.trim(),
-            prompt: livePrompt.trim() || undefined,
-          }),
-        });
-
-        const payload = await response.json();
-
-        if (!response.ok) {
-          throw new Error(payload.error || 'Falha ao criar sessão de transcrição ao vivo.');
-        }
-
-        const transcriptionId = payload?.data?.transcriptionId as string | undefined;
-
-        if (!transcriptionId) {
-          throw new Error('A API não retornou o identificador da transcrição.');
-        }
-
-        setLiveTranscriptionId(transcriptionId);
-        setLiveSuccess('Sessão criada! Inicie a gravação quando estiver pronto.');
-      } catch (error) {
-        const message =
-          error instanceof Error ? error.message : 'Falha ao criar sessão de transcrição ao vivo.';
-        setLiveError(message);
-      } finally {
-        setIsCreatingLive(false);
-      }
-    },
-    [liveTitle, livePrompt, liveTranscriptionId]
-  );
-
-  const handleLiveRecorderError = useCallback((message: string) => {
-    setLiveError(message);
-  }, []);
-
-  const handleLiveComplete = useCallback(
-    async (text: string, duration: number) => {
-      if (!liveTranscriptionId) {
-        return;
-      }
-
-      setIsFinishingLive(true);
-      setLiveError(null);
-
-      try {
-        const response = await fetch('/api/transcribe/live', {
-          method: 'PATCH',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            transcriptionId: liveTranscriptionId,
-            transcriptText: text,
-            audioDuration: duration,
-          }),
-        });
-
-        if (!response.ok) {
-          const payload = await response.json();
-          throw new Error(payload.error || 'Falha ao finalizar a transcrição ao vivo.');
-        }
-
-        router.push(`/dashboard/transcription/${liveTranscriptionId}`);
-      } catch (error) {
-        const message =
-          error instanceof Error ? error.message : 'Falha ao finalizar a transcrição ao vivo.';
-        setLiveError(message);
-      } finally {
-        setIsFinishingLive(false);
-      }
-    },
-    [liveTranscriptionId, router]
-  );
   return (
     <div className="flex min-h-screen flex-col">
       <header className="sticky top-0 z-10 w-full border-b bg-background/95 backdrop-blur">
@@ -312,7 +202,7 @@ export default function NewTranscription() {
           </div>
 
           <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-            <TabsList className="mb-8 grid grid-cols-3 gap-4">
+            <TabsList className="mb-8 grid grid-cols-2 gap-4">
               <TabsTrigger
                 value="file"
                 className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground py-6"
@@ -361,30 +251,6 @@ export default function NewTranscription() {
                     <path d="m14 9-4 6"></path>
                   </svg>
                   Vídeo do YouTube
-                </div>
-              </TabsTrigger>
-              <TabsTrigger
-                value="live"
-                className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground py-6"
-              >
-                <div className="flex flex-col items-center">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="24"
-                    height="24"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className="h-6 w-6 mb-2"
-                  >
-                    <circle cx="12" cy="12" r="10"></circle>
-                    <circle cx="12" cy="12" r="6"></circle>
-                    <circle cx="12" cy="12" r="2"></circle>
-                  </svg>
-                  Ao Vivo
                 </div>
               </TabsTrigger>
             </TabsList>
@@ -544,115 +410,28 @@ export default function NewTranscription() {
                 </form>
               </Card>
             </TabsContent>
-
-            <TabsContent value="live" className="mt-0">
-              <Card>
-                {liveTranscriptionId ? (
-                  <>
-                    <CardHeader>
-                      <CardTitle>Transcrição ao Vivo</CardTitle>
-                      <CardDescription>
-                        Conecte seu microfone e acompanhe a transcrição em tempo real.
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-4">
-                        {liveSuccess && (
-                          <Alert>
-                            <AlertDescription>{liveSuccess}</AlertDescription>
-                          </Alert>
-                        )}
-                        {liveError && (
-                          <Alert variant="destructive">
-                            <AlertDescription>{liveError}</AlertDescription>
-                          </Alert>
-                        )}
-                        {isFinishingLive && (
-                          <Alert>
-                            <AlertDescription>
-                              Enviando transcrição processada. Aguarde enquanto finalizamos...
-                            </AlertDescription>
-                          </Alert>
-                        )}
-                        <LiveRecorder
-                          transcriptionId={liveTranscriptionId}
-                          onTranscriptionComplete={handleLiveComplete}
-                          onError={handleLiveRecorderError}
-                        />
-                      </div>
-                    </CardContent>
-                  </>
-                ) : (
-                  <form onSubmit={handleCreateLiveSession} className="space-y-0">
-                    <CardHeader>
-                      <CardTitle>Transcrição ao Vivo</CardTitle>
-                      <CardDescription>
-                        Inicie uma gravação ao vivo para transcrever em tempo real.
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-4">
-                        {liveError && (
-                          <Alert variant="destructive">
-                            <AlertDescription>{liveError}</AlertDescription>
-                          </Alert>
-                        )}
-                        <div>
-                          <Label htmlFor="live-title">Título da Transcrição</Label>
-                          <Input
-                            id="live-title"
-                            placeholder="Ex: Reunião com o Cliente"
-                            className="mt-1"
-                            value={liveTitle}
-                            onChange={(event) => setLiveTitle(event.target.value)}
-                            required
-                          />
-                        </div>
-
-                        <div>
-                          <Label htmlFor="live-prompt">Prompt de Processamento (Opcional)</Label>
-                          <Textarea
-                            id="live-prompt"
-                            placeholder="Ex: Foco em ações e próximos passos mencionados"
-                            className="mt-1 min-h-24"
-                            value={livePrompt}
-                            onChange={(event) => setLivePrompt(event.target.value)}
-                          />
-                          <p className="text-xs text-gray-500 mt-1">
-                            A IA irá processar a transcrição de acordo com seu prompt após concluir.
-                          </p>
-                        </div>
-
-                        <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg text-center">
-                          <p className="text-sm mb-2">
-                            Ao clicar em &quot;Criar sessão ao vivo&quot;, seu microfone será
-                            ativado após a sessão ser criada.
-                          </p>
-                          <p className="text-xs text-gray-500">
-                            Você pode pausar ou parar a gravação a qualquer momento.
-                          </p>
-                        </div>
-                      </div>
-                    </CardContent>
-                    <CardFooter className="flex justify-between">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => router.push('/dashboard')}
-                      >
-                        Cancelar
-                      </Button>
-                      <Button type="submit" disabled={isCreatingLive}>
-                        {isCreatingLive ? 'Criando sessão...' : 'Criar sessão ao vivo'}
-                      </Button>
-                    </CardFooter>
-                  </form>
-                )}
-              </Card>
-            </TabsContent>
           </Tabs>
         </div>
       </main>
     </div>
+  );
+}
+
+function LoadingFallback() {
+  return (
+    <div className="flex min-h-screen items-center justify-center">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+        <p className="text-gray-500">Carregando...</p>
+      </div>
+    </div>
+  );
+}
+
+export default function NewTranscription() {
+  return (
+    <Suspense fallback={<LoadingFallback />}>
+      <NewTranscriptionContent />
+    </Suspense>
   );
 }

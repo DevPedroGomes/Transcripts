@@ -227,9 +227,6 @@ export default function Dashboard() {
               <TabsTrigger value="youtube">
                 YouTube ({transcriptions.filter((t) => t.source === 'youtube').length})
               </TabsTrigger>
-              <TabsTrigger value="live">
-                Ao vivo ({transcriptions.filter((t) => t.source === 'live').length})
-              </TabsTrigger>
             </TabsList>
 
             <TabsContent value={activeTab} className="mt-0">

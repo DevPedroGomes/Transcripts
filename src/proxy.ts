@@ -3,7 +3,7 @@ import type { NextRequest } from 'next/server';
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { checkRateLimit, getClientIp, createRateLimitHeaders } from './lib/rate-limit';
 
-export async function middleware(request: NextRequest) {
+async function proxy(request: NextRequest) {
   const response = NextResponse.next({
     request: {
       headers: request.headers,
@@ -155,6 +155,8 @@ export async function middleware(request: NextRequest) {
 
   return response;
 }
+
+export default proxy;
 
 export const config = {
   matcher: [

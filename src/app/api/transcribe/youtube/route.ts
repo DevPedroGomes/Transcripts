@@ -17,7 +17,7 @@ import {
 export async function POST(request: NextRequest) {
   try {
     // Verificar autenticação
-    const supabase = createSupabaseServerClient();
+    const supabase = await createSupabaseServerClient();
     const {
       data: { session },
     } = await supabase.auth.getSession();

@@ -1,10 +1,24 @@
 import Stripe from 'stripe';
 
-export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2023-10-16',
-  typescript: true,
-});
+let stripeClient: Stripe | null = null;
 
 export const getStripeClient = () => {
-  return stripe;
+  if (!stripeClient) {
+    const secretKey = process.env.STRIPE_SECRET_KEY;
+    if (!secretKey) {
+      throw new Error('Missing STRIPE_SECRET_KEY environment variable');
+    }
+    stripeClient = new Stripe(secretKey, {
+      apiVersion: '2025-02-24.acacia',
+      typescript: true,
+    });
+  }
+  return stripeClient;
+};
+
+// For backwards compatibility
+export const stripe = {
+  get client() {
+    return getStripeClient();
+  },
 };

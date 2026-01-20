@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useState, useEffect } from 'react';
 import { createSupabaseBrowserClient } from '@/lib/supabase/auth';
-import { useRouter } from 'next/navigation';
+import { useRouter, useParams } from 'next/navigation';
 
 type Transcription = {
   id: string;
@@ -21,7 +21,8 @@ type Transcription = {
   prompt: string | null;
 };
 
-export default function TranscriptionDetails({ params }: { params: { id: string } }) {
+export default function TranscriptionDetails() {
+  const params = useParams<{ id: string }>();
   const [activeTab, setActiveTab] = useState('transcript');
   const [transcription, setTranscription] = useState<Transcription | null>(null);
   const [isLoading, setIsLoading] = useState(true);
