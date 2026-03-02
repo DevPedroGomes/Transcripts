@@ -7,7 +7,7 @@ const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
   title: 'Meetings Transcript - Transcrição de Áudios',
-  description: 'Transcreva áudios de arquivos, YouTube ou gravações ao vivo com IA.',
+  description: 'Transcreva áudios de arquivos e vídeos do YouTube com IA.',
 };
 
 export default function RootLayout({

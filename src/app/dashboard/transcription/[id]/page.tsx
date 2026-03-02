@@ -4,70 +4,101 @@ import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useState, useEffect } from 'react';
-import { createSupabaseBrowserClient } from '@/lib/supabase/auth';
 import { useRouter, useParams } from 'next/navigation';
-
-type Transcription = {
-  id: string;
-  title: string;
-  source: 'file' | 'youtube' | 'live';
-  status: 'pending' | 'processing' | 'completed' | 'failed';
-  duration_seconds: number | null;
-  created_at: string;
-  transcript_raw: string | null;
-  transcript_processed: string | null;
-  file_url: string | null;
-  youtube_url: string | null;
-  prompt: string | null;
-};
+import { Header } from '@/components/layout/Header';
+import { getTranscriptionById, updateTranscription, deleteTranscription } from '@/lib/storage';
+import type { StoredTranscription } from '@/lib/types';
+import { Download, Copy, Trash2, RefreshCw, Check } from 'lucide-react';
+import { Textarea } from '@/components/ui/textarea';
 
 export default function TranscriptionDetails() {
   const params = useParams<{ id: string }>();
-  const [activeTab, setActiveTab] = useState('transcript');
-  const [transcription, setTranscription] = useState<Transcription | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const router = useRouter();
+  const [activeTab, setActiveTab] = useState('transcript');
+  const [transcription, setTranscription] = useState<StoredTranscription | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [copied, setCopied] = useState(false);
+
+  // Reprocess state
+  const [showReprocess, setShowReprocess] = useState(false);
+  const [reprocessPrompt, setReprocessPrompt] = useState('');
+  const [isReprocessing, setIsReprocessing] = useState(false);
+  const [reprocessError, setReprocessError] = useState<string | null>(null);
 
   useEffect(() => {
-    async function fetchTranscription() {
-      try {
-        const supabase = createSupabaseBrowserClient();
+    const t = getTranscriptionById(params.id);
+    setTranscription(t);
+    setIsLoading(false);
+  }, [params.id]);
 
-        // Verificar sessão
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
-        if (!session) {
-          router.push('/auth/login');
-          return;
-        }
+  const handleDelete = () => {
+    if (!confirm('Tem certeza que deseja excluir esta transcrição?')) return;
+    deleteTranscription(params.id);
+    router.push('/dashboard');
+  };
 
-        // Buscar transcrição verificando ownership (user_id)
-        const { data, error: fetchError } = await supabase
-          .from('transcriptions')
-          .select('*')
-          .eq('id', params.id)
-          .eq('user_id', session.user.id)
-          .single();
+  const handleExportTxt = () => {
+    if (!transcription) return;
+    const content = transcription.transcript_processed || transcription.transcript_raw || '';
+    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${transcription.title}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
-        if (fetchError || !data) {
-          setError('Transcrição não encontrada ou você não tem permissão para visualizá-la.');
-          return;
-        }
+  const handleCopy = async () => {
+    if (!transcription) return;
+    const content = transcription.transcript_processed || transcription.transcript_raw || '';
+    await navigator.clipboard.writeText(content);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
-        setTranscription(data);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Erro desconhecido');
-      } finally {
-        setIsLoading(false);
+  const handleReprocess = async () => {
+    if (!transcription?.transcript_raw || !reprocessPrompt.trim()) return;
+
+    setIsReprocessing(true);
+    setReprocessError(null);
+
+    try {
+      const response = await fetch('/api/reprocess', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          transcriptRaw: transcription.transcript_raw,
+          prompt: reprocessPrompt.trim(),
+        }),
+      });
+
+      const payload = await response.json();
+
+      if (!response.ok || !payload.success) {
+        throw new Error(payload.error || 'Falha ao reprocessar.');
       }
+
+      const updated = updateTranscription(params.id, {
+        transcript_processed: payload.data.transcript_processed,
+        prompt: reprocessPrompt.trim(),
+      });
+
+      if (updated) {
+        setTranscription(updated);
+      }
+
+      setShowReprocess(false);
+      setReprocessPrompt('');
+      setActiveTab('transcript');
+    } catch (error) {
+      setReprocessError(error instanceof Error ? error.message : 'Erro ao reprocessar.');
+    } finally {
+      setIsReprocessing(false);
     }
+  };
 
-    fetchTranscription();
-  }, [params.id, router]);
-
-  const formatDuration = (seconds: number | null) => {
+  const formatDuration = (seconds?: number) => {
     if (!seconds) return '—';
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
@@ -88,7 +119,6 @@ export default function TranscriptionDetails() {
     const labels: Record<string, string> = {
       file: 'Arquivo de Áudio',
       youtube: 'Vídeo do YouTube',
-      live: 'Gravação ao Vivo',
     };
     return labels[source] || source;
   };
@@ -96,19 +126,15 @@ export default function TranscriptionDetails() {
   const getStatusBadge = (status: string) => {
     const styles: Record<string, string> = {
       completed: 'bg-green-50 text-green-700 ring-green-600/20',
-      processing: 'bg-yellow-50 text-yellow-700 ring-yellow-600/20',
-      pending: 'bg-gray-50 text-gray-700 ring-gray-600/20',
       failed: 'bg-red-50 text-red-700 ring-red-600/20',
     };
     const labels: Record<string, string> = {
       completed: 'Completada',
-      processing: 'Processando',
-      pending: 'Pendente',
       failed: 'Falhou',
     };
     return (
       <span
-        className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ring-1 ring-inset ${styles[status] || styles.pending}`}
+        className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ring-1 ring-inset ${styles[status] || 'bg-gray-50 text-gray-700 ring-gray-600/20'}`}
       >
         {labels[status] || status}
       </span>
@@ -126,21 +152,13 @@ export default function TranscriptionDetails() {
     );
   }
 
-  if (error || !transcription) {
+  if (!transcription) {
     return (
       <div className="flex min-h-screen flex-col">
-        <header className="sticky top-0 z-10 w-full border-b bg-background/95 backdrop-blur">
-          <div className="container flex h-16 items-center justify-between">
-            <div className="flex items-center gap-2 font-bold">
-              <Link href="/dashboard">
-                <span className="text-xl">MeetingsTranscript</span>
-              </Link>
-            </div>
-          </div>
-        </header>
+        <Header />
         <main className="flex-1 flex items-center justify-center">
           <div className="text-center">
-            <p className="text-red-500 mb-4">{error || 'Transcrição não encontrada'}</p>
+            <p className="text-red-500 mb-4">Transcrição não encontrada.</p>
             <Link href="/dashboard">
               <Button>Voltar ao Dashboard</Button>
             </Link>
@@ -157,20 +175,7 @@ export default function TranscriptionDetails() {
 
   return (
     <div className="flex min-h-screen flex-col">
-      <header className="sticky top-0 z-10 w-full border-b bg-background/95 backdrop-blur">
-        <div className="container flex h-16 items-center justify-between">
-          <div className="flex items-center gap-2 font-bold">
-            <Link href="/dashboard">
-              <span className="text-xl">MeetingsTranscript</span>
-            </Link>
-          </div>
-          <div className="flex items-center gap-4">
-            <button className="rounded-full h-8 w-8 bg-gray-200 flex items-center justify-center">
-              <span className="font-medium text-sm">U</span>
-            </button>
-          </div>
-        </div>
-      </header>
+      <Header />
       <main className="flex-1">
         <div className="container py-8">
           <div className="mb-6">
@@ -178,16 +183,31 @@ export default function TranscriptionDetails() {
               href="/dashboard"
               className="text-sm text-gray-500 hover:text-gray-700 mb-2 inline-block"
             >
-              ← Voltar para o Dashboard
+              &larr; Voltar para o Dashboard
             </Link>
             <div className="flex items-center justify-between">
               <h1 className="text-3xl font-bold">{transcription.title}</h1>
               <div className="flex gap-2">
-                <Button variant="outline" size="sm">
-                  Compartilhar
-                </Button>
-                <Button variant="outline" size="sm">
+                <Button variant="outline" size="sm" onClick={handleExportTxt} title="Exportar TXT">
+                  <Download className="h-4 w-4 mr-1" />
                   Exportar
+                </Button>
+                <Button variant="outline" size="sm" onClick={handleCopy} title="Copiar texto">
+                  {copied ? (
+                    <Check className="h-4 w-4 mr-1" />
+                  ) : (
+                    <Copy className="h-4 w-4 mr-1" />
+                  )}
+                  {copied ? 'Copiado!' : 'Copiar'}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleDelete}
+                  className="text-red-500 hover:text-red-700"
+                  title="Excluir"
+                >
+                  <Trash2 className="h-4 w-4" />
                 </Button>
               </div>
             </div>
@@ -196,7 +216,7 @@ export default function TranscriptionDetails() {
               <span className="text-sm text-gray-500">{getSourceLabel(transcription.source)}</span>
               {transcription.duration_seconds && (
                 <span className="text-sm text-gray-500">
-                  {Math.floor(transcription.duration_seconds / 60)} minutos
+                  {formatDuration(transcription.duration_seconds)}
                 </span>
               )}
               <span className="text-sm text-gray-500">
@@ -211,24 +231,7 @@ export default function TranscriptionDetails() {
             )}
           </div>
 
-          {transcription.status === 'processing' || transcription.status === 'pending' ? (
-            <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-6 text-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-yellow-600 mx-auto mb-4"></div>
-              <p className="text-yellow-700 dark:text-yellow-300">
-                {transcription.status === 'processing'
-                  ? 'Sua transcrição está sendo processada. Isso pode levar alguns minutos...'
-                  : 'Sua transcrição está na fila de processamento...'}
-              </p>
-              <Button
-                variant="outline"
-                size="sm"
-                className="mt-4"
-                onClick={() => window.location.reload()}
-              >
-                Atualizar Status
-              </Button>
-            </div>
-          ) : transcription.status === 'failed' ? (
+          {transcription.status === 'failed' ? (
             <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-6 text-center">
               <p className="text-red-700 dark:text-red-300">
                 Ocorreu um erro ao processar sua transcrição. Por favor, tente novamente.
@@ -278,13 +281,58 @@ export default function TranscriptionDetails() {
             </Tabs>
           )}
 
-          {transcription.status === 'completed' && (
-            <div className="mt-8 text-center">
-              <p className="text-gray-500 mb-4">
-                Não está satisfeito com o resultado? Experimente processar novamente com um prompt
-                diferente.
-              </p>
-              <Button variant="outline">Reprocessar com Novo Prompt</Button>
+          {transcription.status === 'completed' && hasRawContent && (
+            <div className="mt-8">
+              {showReprocess ? (
+                <div className="border rounded-lg p-6 space-y-4">
+                  <h3 className="font-semibold">Reprocessar com novo prompt</h3>
+                  <Textarea
+                    placeholder="Ex: Crie uma lista com os principais tópicos discutidos..."
+                    value={reprocessPrompt}
+                    onChange={(e) => setReprocessPrompt(e.target.value)}
+                    className="min-h-24"
+                  />
+                  {reprocessError && (
+                    <p className="text-sm text-red-500">{reprocessError}</p>
+                  )}
+                  <div className="flex gap-2">
+                    <Button
+                      onClick={handleReprocess}
+                      disabled={isReprocessing || !reprocessPrompt.trim()}
+                    >
+                      {isReprocessing ? (
+                        <>
+                          <RefreshCw className="h-4 w-4 mr-1 animate-spin" />
+                          Reprocessando...
+                        </>
+                      ) : (
+                        'Reprocessar'
+                      )}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setShowReprocess(false);
+                        setReprocessPrompt('');
+                        setReprocessError(null);
+                      }}
+                    >
+                      Cancelar
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center">
+                  <p className="text-gray-500 mb-4">
+                    Não está satisfeito com o resultado? Experimente processar novamente com um
+                    prompt diferente.
+                  </p>
+                  <Button variant="outline" onClick={() => setShowReprocess(true)}>
+                    <RefreshCw className="h-4 w-4 mr-1" />
+                    Reprocessar com Novo Prompt
+                  </Button>
+                </div>
+              )}
             </div>
           )}
         </div>

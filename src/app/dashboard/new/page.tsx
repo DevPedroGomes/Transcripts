@@ -19,6 +19,10 @@ import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { FileUploader } from '@/components/transcription/FileUploader';
 import { YouTubeInput } from '@/components/transcription/YouTubeInput';
+import { Header } from '@/components/layout/Header';
+import { addTranscription } from '@/lib/storage';
+import { FileAudio, Youtube } from 'lucide-react';
+import type { TranscribeApiResponse } from '@/lib/types';
 
 function NewTranscriptionContent() {
   const searchParams = useSearchParams();
@@ -29,14 +33,12 @@ function NewTranscriptionContent() {
   const [fileTitle, setFileTitle] = useState('');
   const [filePrompt, setFilePrompt] = useState('');
   const [fileError, setFileError] = useState<string | null>(null);
-  const [fileSuccess, setFileSuccess] = useState<string | null>(null);
   const [isSubmittingFile, setIsSubmittingFile] = useState(false);
 
   const [youtubeTitle, setYoutubeTitle] = useState('');
   const [youtubePrompt, setYoutubePrompt] = useState('');
   const [youtubeUrl, setYoutubeUrl] = useState('');
   const [youtubeError, setYoutubeError] = useState<string | null>(null);
-  const [youtubeSuccess, setYoutubeSuccess] = useState<string | null>(null);
   const [isSubmittingYoutube, setIsSubmittingYoutube] = useState(false);
 
   useEffect(() => {
@@ -53,9 +55,6 @@ function NewTranscriptionContent() {
   const handleFileChange = useCallback((file: File | null) => {
     setSelectedFile(file);
     setFileError(null);
-    if (!file) {
-      setFileSuccess(null);
-    }
   }, []);
 
   const handleFileSubmit = useCallback(
@@ -66,7 +65,6 @@ function NewTranscriptionContent() {
         setFileError('Selecione um arquivo de áudio antes de iniciar a transcrição.');
         return;
       }
-
       if (!fileTitle.trim()) {
         setFileError('Informe um título para a transcrição.');
         return;
@@ -74,7 +72,6 @@ function NewTranscriptionContent() {
 
       setIsSubmittingFile(true);
       setFileError(null);
-      setFileSuccess(null);
 
       try {
         const formData = new FormData();
@@ -89,22 +86,16 @@ function NewTranscriptionContent() {
           body: formData,
         });
 
-        const payload = await response.json();
+        const payload: TranscribeApiResponse = await response.json();
 
-        if (!response.ok) {
-          throw new Error(payload.error || 'Falha ao iniciar a transcrição do arquivo.');
+        if (!response.ok || !payload.success || !payload.data) {
+          throw new Error(payload.error || 'Falha ao processar o arquivo.');
         }
 
-        const transcriptionId = payload?.data?.transcriptionId as string | undefined;
-        setFileSuccess('Transcrição iniciada! Redirecionando para o acompanhamento...');
-
-        if (transcriptionId) {
-          setTimeout(() => router.push(`/dashboard/transcription/${transcriptionId}`), 1200);
-        }
+        addTranscription(payload.data);
+        router.push(`/dashboard/transcription/${payload.data.id}`);
       } catch (error) {
-        const message =
-          error instanceof Error ? error.message : 'Falha ao iniciar a transcrição do arquivo.';
-        setFileError(message);
+        setFileError(error instanceof Error ? error.message : 'Falha ao processar o arquivo.');
       } finally {
         setIsSubmittingFile(false);
       }
@@ -115,7 +106,6 @@ function NewTranscriptionContent() {
   const handleYoutubeUrlChange = useCallback((url: string) => {
     setYoutubeUrl(url);
     setYoutubeError(null);
-    setYoutubeSuccess(null);
   }, []);
 
   const handleYoutubeSubmit = useCallback(
@@ -126,7 +116,6 @@ function NewTranscriptionContent() {
         setYoutubeError('Informe um título para a transcrição.');
         return;
       }
-
       if (!youtubeUrl) {
         setYoutubeError('Forneça uma URL válida do YouTube.');
         return;
@@ -134,14 +123,11 @@ function NewTranscriptionContent() {
 
       setIsSubmittingYoutube(true);
       setYoutubeError(null);
-      setYoutubeSuccess(null);
 
       try {
         const response = await fetch('/api/transcribe/youtube', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             title: youtubeTitle.trim(),
             youtubeUrl,
@@ -149,22 +135,16 @@ function NewTranscriptionContent() {
           }),
         });
 
-        const payload = await response.json();
+        const payload: TranscribeApiResponse = await response.json();
 
-        if (!response.ok) {
-          throw new Error(payload.error || 'Falha ao iniciar a transcrição do vídeo.');
+        if (!response.ok || !payload.success || !payload.data) {
+          throw new Error(payload.error || 'Falha ao processar o vídeo.');
         }
 
-        const transcriptionId = payload?.data?.transcriptionId as string | undefined;
-        setYoutubeSuccess('Transcrição iniciada! Redirecionando para o acompanhamento...');
-
-        if (transcriptionId) {
-          setTimeout(() => router.push(`/dashboard/transcription/${transcriptionId}`), 1200);
-        }
+        addTranscription(payload.data);
+        router.push(`/dashboard/transcription/${payload.data.id}`);
       } catch (error) {
-        const message =
-          error instanceof Error ? error.message : 'Falha ao iniciar a transcrição do vídeo.';
-        setYoutubeError(message);
+        setYoutubeError(error instanceof Error ? error.message : 'Falha ao processar o vídeo.');
       } finally {
         setIsSubmittingYoutube(false);
       }
@@ -174,20 +154,7 @@ function NewTranscriptionContent() {
 
   return (
     <div className="flex min-h-screen flex-col">
-      <header className="sticky top-0 z-10 w-full border-b bg-background/95 backdrop-blur">
-        <div className="container flex h-16 items-center justify-between">
-          <div className="flex items-center gap-2 font-bold">
-            <Link href="/dashboard">
-              <span className="text-xl">MeetingsTranscript</span>
-            </Link>
-          </div>
-          <div className="flex items-center gap-4">
-            <button className="rounded-full h-8 w-8 bg-gray-200 flex items-center justify-center">
-              <span className="font-medium text-sm">U</span>
-            </button>
-          </div>
-        </div>
-      </header>
+      <Header />
       <main className="flex-1">
         <div className="container py-8">
           <div className="mb-6">
@@ -195,7 +162,7 @@ function NewTranscriptionContent() {
               href="/dashboard"
               className="text-sm text-gray-500 hover:text-gray-700 mb-2 inline-block"
             >
-              ← Voltar para o Dashboard
+              &larr; Voltar para o Dashboard
             </Link>
             <h1 className="text-3xl font-bold">Nova Transcrição</h1>
             <p className="text-gray-500 mt-1">Escolha o método de transcrição</p>
@@ -208,24 +175,7 @@ function NewTranscriptionContent() {
                 className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground py-6"
               >
                 <div className="flex flex-col items-center">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="24"
-                    height="24"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className="h-6 w-6 mb-2"
-                  >
-                    <path d="M21 15V6"></path>
-                    <path d="M18.5 18a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z"></path>
-                    <path d="M12 12H3"></path>
-                    <path d="M16 6H3"></path>
-                    <path d="M12 18H3"></path>
-                  </svg>
+                  <FileAudio className="h-6 w-6 mb-2" />
                   Arquivo de Áudio
                 </div>
               </TabsTrigger>
@@ -234,22 +184,7 @@ function NewTranscriptionContent() {
                 className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground py-6"
               >
                 <div className="flex flex-col items-center">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="24"
-                    height="24"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className="h-6 w-6 mb-2"
-                  >
-                    <path d="m7 18-4-4 4-4"></path>
-                    <path d="m17 6 4 4-4 4"></path>
-                    <path d="m14 9-4 6"></path>
-                  </svg>
+                  <Youtube className="h-6 w-6 mb-2" />
                   Vídeo do YouTube
                 </div>
               </TabsTrigger>
@@ -257,11 +192,7 @@ function NewTranscriptionContent() {
 
             <TabsContent value="file" className="mt-0">
               <Card>
-                <form
-                  onSubmit={handleFileSubmit}
-                  encType="multipart/form-data"
-                  className="space-y-0"
-                >
+                <form onSubmit={handleFileSubmit} encType="multipart/form-data" className="space-y-0">
                   <CardHeader>
                     <CardTitle>Transcrever Arquivo de Áudio</CardTitle>
                     <CardDescription>
@@ -275,11 +206,6 @@ function NewTranscriptionContent() {
                           <AlertDescription>{fileError}</AlertDescription>
                         </Alert>
                       )}
-                      {fileSuccess && (
-                        <Alert>
-                          <AlertDescription>{fileSuccess}</AlertDescription>
-                        </Alert>
-                      )}
 
                       <div>
                         <Label htmlFor="file-title">Título da Transcrição</Label>
@@ -288,19 +214,16 @@ function NewTranscriptionContent() {
                           placeholder="Ex: Reunião de Planejamento"
                           className="mt-1"
                           value={fileTitle}
-                          onChange={(event) => setFileTitle(event.target.value)}
+                          onChange={(e) => setFileTitle(e.target.value)}
                           required
                         />
                       </div>
 
                       <FileUploader
                         onFileChange={handleFileChange}
-                        onError={(message) => {
-                          setFileError(message);
-                          setFileSuccess(null);
-                        }}
+                        onError={(message) => setFileError(message)}
                         acceptedFileTypes={['.mp3', '.wav', '.m4a', '.ogg']}
-                        maxSizeMB={500}
+                        maxSizeMB={50}
                       />
 
                       <div>
@@ -310,7 +233,7 @@ function NewTranscriptionContent() {
                           placeholder="Ex: Destaque os pontos relacionados a vendas e oportunidades de mercado"
                           className="mt-1 min-h-24"
                           value={filePrompt}
-                          onChange={(event) => setFilePrompt(event.target.value)}
+                          onChange={(e) => setFilePrompt(e.target.value)}
                         />
                         <p className="text-xs text-gray-500 mt-1">
                           A IA irá processar a transcrição de acordo com seu prompt após concluir.
@@ -327,7 +250,7 @@ function NewTranscriptionContent() {
                       Cancelar
                     </Button>
                     <Button type="submit" disabled={isSubmittingFile}>
-                      {isSubmittingFile ? 'Enviando...' : 'Iniciar Transcrição'}
+                      {isSubmittingFile ? 'Processando...' : 'Iniciar Transcrição'}
                     </Button>
                   </CardFooter>
                 </form>
@@ -350,11 +273,6 @@ function NewTranscriptionContent() {
                           <AlertDescription>{youtubeError}</AlertDescription>
                         </Alert>
                       )}
-                      {youtubeSuccess && (
-                        <Alert>
-                          <AlertDescription>{youtubeSuccess}</AlertDescription>
-                        </Alert>
-                      )}
 
                       <div>
                         <Label htmlFor="youtube-title">Título da Transcrição</Label>
@@ -363,7 +281,7 @@ function NewTranscriptionContent() {
                           placeholder="Ex: Tutorial de Next.js"
                           className="mt-1"
                           value={youtubeTitle}
-                          onChange={(event) => setYoutubeTitle(event.target.value)}
+                          onChange={(e) => setYoutubeTitle(e.target.value)}
                           required
                         />
                       </div>
@@ -373,10 +291,7 @@ function NewTranscriptionContent() {
                         <YouTubeInput
                           inputId="youtube-url"
                           onUrlChange={handleYoutubeUrlChange}
-                          onError={(message) => {
-                            setYoutubeError(message);
-                            setYoutubeSuccess(null);
-                          }}
+                          onError={(message) => setYoutubeError(message)}
                         />
                       </div>
 
@@ -387,7 +302,7 @@ function NewTranscriptionContent() {
                           placeholder="Ex: Extraia os principais conceitos e crie um resumo estruturado"
                           className="mt-1 min-h-24"
                           value={youtubePrompt}
-                          onChange={(event) => setYoutubePrompt(event.target.value)}
+                          onChange={(e) => setYoutubePrompt(e.target.value)}
                         />
                         <p className="text-xs text-gray-500 mt-1">
                           A IA irá processar a transcrição de acordo com seu prompt após concluir.
@@ -404,7 +319,7 @@ function NewTranscriptionContent() {
                       Cancelar
                     </Button>
                     <Button type="submit" disabled={isSubmittingYoutube}>
-                      {isSubmittingYoutube ? 'Enviando...' : 'Iniciar Transcrição'}
+                      {isSubmittingYoutube ? 'Processando...' : 'Iniciar Transcrição'}
                     </Button>
                   </CardFooter>
                 </form>

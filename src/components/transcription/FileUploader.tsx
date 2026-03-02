@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useRef, useState } from 'react';
-import { Upload, X, AlertCircle } from 'lucide-react';
+import { Upload, X, AlertCircle, Music } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 
@@ -123,7 +123,7 @@ export function FileUploader({
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
               <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                <audio className="h-5 w-5 text-primary" />
+                <Music className="h-5 w-5 text-primary" />
               </div>
               <div className="overflow-hidden">
                 <p className="text-sm font-medium truncate">{file.name}</p>
