@@ -1,24 +1,22 @@
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { FileAudio, Youtube } from 'lucide-react';
+import { Header } from '@/components/layout/Header';
 
 export default function Home() {
   return (
     <div className="flex min-h-screen flex-col">
-      <header className="sticky top-0 z-10 w-full border-b bg-background/95 backdrop-blur">
-        <div className="container flex h-16 items-center justify-between">
-          <div className="flex items-center gap-2 font-bold">
-            <span className="text-xl">MeetingsTranscript</span>
-          </div>
+      <Header
+        rightContent={
           <Link href="/dashboard">
-            <Button variant="outline">Dashboard</Button>
+            <Button variant="outline" size="sm">Dashboard</Button>
           </Link>
-        </div>
-      </header>
+        }
+      />
       <main className="flex-1">
         <section className="py-24 md:py-32">
-          <div className="container flex flex-col items-center justify-center space-y-4 text-center">
-            <div className="space-y-2">
+          <div className="container flex flex-col items-center justify-center space-y-6 text-center">
+            <div className="space-y-3">
               <h1 className="text-4xl font-bold tracking-tighter sm:text-5xl md:text-6xl">
                 Transforme Áudio em Texto com IA
               </h1>
@@ -55,9 +53,9 @@ export default function Home() {
           </div>
         </section>
       </main>
-      <footer className="border-t py-6 md:py-0">
-        <div className="container flex flex-col items-center justify-between gap-4 md:h-16 md:flex-row">
-          <p className="text-balance text-center text-sm text-gray-500 dark:text-gray-400 md:text-left">
+      <footer className="border-t py-6">
+        <div className="container text-center">
+          <p className="text-sm text-gray-500 dark:text-gray-400">
             &copy; {new Date().getFullYear()} MeetingsTranscript. Todos os direitos reservados.
           </p>
         </div>

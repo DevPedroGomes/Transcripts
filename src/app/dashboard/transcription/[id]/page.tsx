@@ -185,31 +185,29 @@ export default function TranscriptionDetails() {
             >
               &larr; Voltar para o Dashboard
             </Link>
-            <div className="flex items-center justify-between">
-              <h1 className="text-3xl font-bold">{transcription.title}</h1>
-              <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={handleExportTxt} title="Exportar TXT">
-                  <Download className="h-4 w-4 mr-1" />
-                  Exportar
-                </Button>
-                <Button variant="outline" size="sm" onClick={handleCopy} title="Copiar texto">
-                  {copied ? (
-                    <Check className="h-4 w-4 mr-1" />
-                  ) : (
-                    <Copy className="h-4 w-4 mr-1" />
-                  )}
-                  {copied ? 'Copiado!' : 'Copiar'}
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleDelete}
-                  className="text-red-500 hover:text-red-700"
-                  title="Excluir"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </div>
+            <h1 className="text-3xl font-bold">{transcription.title}</h1>
+            <div className="flex gap-2 mt-3">
+              <Button variant="outline" size="sm" onClick={handleExportTxt} title="Exportar TXT">
+                <Download className="h-4 w-4 mr-1" />
+                Exportar
+              </Button>
+              <Button variant="outline" size="sm" onClick={handleCopy} title="Copiar texto">
+                {copied ? (
+                  <Check className="h-4 w-4 mr-1" />
+                ) : (
+                  <Copy className="h-4 w-4 mr-1" />
+                )}
+                {copied ? 'Copiado!' : 'Copiar'}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleDelete}
+                className="text-red-500 hover:text-red-700"
+                title="Excluir"
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
             </div>
             <div className="flex items-center gap-4 mt-2 flex-wrap">
               {getStatusBadge(transcription.status)}

@@ -1,0 +1,37 @@
+services:
+  app:
+    build: .
+    container_name: transcripts-app
+    restart: unless-stopped
+    environment:
+      DEEPGRAM_API_KEY: ${DEEPGRAM_API_KEY}
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+    networks:
+      - proxy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.transcripts.entrypoints=https"
+      - "traefik.http.routers.transcripts.rule=Host(`transcripts.pgdev.com.br`)"
+      - "traefik.http.routers.transcripts.tls=true"
+      - "traefik.http.routers.transcripts.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.transcripts.middlewares=transcripts-security@docker"
+      - "traefik.http.services.transcripts.loadbalancer.server.port=3000"
+      # Security Headers
+      - "traefik.http.middlewares.transcripts-security.headers.stsSeconds=31536000"
+      - "traefik.http.middlewares.transcripts-security.headers.stsIncludeSubdomains=true"
+      - "traefik.http.middlewares.transcripts-security.headers.stsPreload=true"
+      - "traefik.http.middlewares.transcripts-security.headers.forceSTSHeader=true"
+      - "traefik.http.middlewares.transcripts-security.headers.contentTypeNosniff=true"
+      - "traefik.http.middlewares.transcripts-security.headers.browserXssFilter=true"
+      - "traefik.http.middlewares.transcripts-security.headers.referrerPolicy=strict-origin-when-cross-origin"
+      - "traefik.http.middlewares.transcripts-security.headers.frameDeny=true"
+    healthcheck:
+      test: ["CMD", "wget", "-O", "-", "http://127.0.0.1:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+networks:
+  proxy:
+    external: true

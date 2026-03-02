@@ -90,11 +90,8 @@ export default function Dashboard() {
       <Header showNewButton />
       <main className="flex-1">
         <div className="container py-8">
-          <div className="flex items-center justify-between mb-6">
+          <div className="mb-6">
             <h1 className="text-3xl font-bold">Suas Transcrições</h1>
-            <Link href="/dashboard/new">
-              <Button>Nova Transcrição</Button>
-            </Link>
           </div>
 
           <Tabs defaultValue="all" value={activeTab} onValueChange={setActiveTab} className="w-full">
