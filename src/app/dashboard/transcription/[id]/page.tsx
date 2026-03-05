@@ -14,7 +14,7 @@ import { Textarea } from '@/components/ui/textarea';
 export default function TranscriptionDetails() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState('transcript');
+  const [activeTab, setActiveTab] = useState('raw');
   const [transcription, setTranscription] = useState<StoredTranscription | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [copied, setCopied] = useState(false);
@@ -28,6 +28,9 @@ export default function TranscriptionDetails() {
   useEffect(() => {
     const t = getTranscriptionById(params.id);
     setTranscription(t);
+    if (t?.transcript_processed?.trim()) {
+      setActiveTab('transcript');
+    }
     setIsLoading(false);
   }, [params.id]);
 
@@ -117,8 +120,9 @@ export default function TranscriptionDetails() {
 
   const getSourceLabel = (source: string) => {
     const labels: Record<string, string> = {
-      file: 'Arquivo de Áudio',
-      youtube: 'Vídeo do YouTube',
+      file: 'Arquivo de Audio',
+      youtube: 'Video do YouTube',
+      realtime: 'Microfone ao Vivo',
     };
     return labels[source] || source;
   };

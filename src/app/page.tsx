@@ -1,6 +1,6 @@
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { FileAudio, Youtube } from 'lucide-react';
+import { FileAudio, Youtube, Mic } from 'lucide-react';
 import { Header } from '@/components/layout/Header';
 
 export default function Home() {
@@ -31,23 +31,32 @@ export default function Home() {
           </div>
         </section>
         <section className="container py-12 md:py-24">
-          <div className="grid gap-8 md:grid-cols-2 max-w-3xl mx-auto">
+          <div className="grid gap-8 md:grid-cols-3 max-w-4xl mx-auto">
             <div className="flex flex-col items-center space-y-4 rounded-lg border p-6">
               <div className="rounded-full bg-primary/10 p-4">
                 <FileAudio className="h-6 w-6 text-primary" />
               </div>
-              <h3 className="text-xl font-bold">Arquivos de Áudio</h3>
+              <h3 className="text-xl font-bold">Arquivos de Audio</h3>
               <p className="text-center text-gray-500 dark:text-gray-400">
-                Faça upload de seus arquivos MP3 ou WAV e receba a transcrição rapidamente.
+                Faca upload de arquivos MP3, WAV, M4A e outros formatos para transcricao.
               </p>
             </div>
             <div className="flex flex-col items-center space-y-4 rounded-lg border p-6">
               <div className="rounded-full bg-primary/10 p-4">
                 <Youtube className="h-6 w-6 text-primary" />
               </div>
-              <h3 className="text-xl font-bold">Vídeos do YouTube</h3>
+              <h3 className="text-xl font-bold">Videos do YouTube</h3>
               <p className="text-center text-gray-500 dark:text-gray-400">
-                Cole o link de qualquer vídeo do YouTube e extraia o texto completo.
+                Cole o link de qualquer video do YouTube e extraia o texto completo.
+              </p>
+            </div>
+            <div className="flex flex-col items-center space-y-4 rounded-lg border p-6">
+              <div className="rounded-full bg-primary/10 p-4">
+                <Mic className="h-6 w-6 text-primary" />
+              </div>
+              <h3 className="text-xl font-bold">Microfone ao Vivo</h3>
+              <p className="text-center text-gray-500 dark:text-gray-400">
+                Transcreva em tempo real usando seu microfone com Deepgram Nova-3.
               </p>
             </div>
           </div>

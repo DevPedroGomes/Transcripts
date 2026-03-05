@@ -1,157 +1,205 @@
 # MeetingsTranscript
 
-Aplicação de transcrição de áudio e vídeo com processamento por IA, construída com Next.js 16, Supabase e LangChain.
+Audio and video transcription application powered by AI. Upload audio files or paste a YouTube URL to get accurate transcriptions with optional AI-powered processing using custom prompts.
 
-## Arquitetura
+Built as a self-contained showcase application with no external database -- all data is stored client-side in localStorage.
 
-```
-┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
-│                 │     │                 │     │                 │
-│  Next.js 16     │◄────┤   API Routes    │◄────┤  Supabase DB    │
-│   (Frontend)    │     │   (Backend)     │     │  (PostgreSQL)   │
-│                 │     │                 │     │                 │
-└────────┬────────┘     └────────┬────────┘     └─────────────────┘
-         │                       │
-         │                       ▼
-         │              ┌─────────────────┐     ┌─────────────────┐
-         │              │                 │     │                 │
-         │              │ Deepgram API +  │     │    Inngest      │
-         │              │   LangChain     │     │  (Background)   │
-         │              │                 │     │                 │
-         │              └─────────────────┘     └─────────────────┘
-         │
-         ▼
-┌─────────────────┐
-│  Upstash Redis  │
-│ (Rate Limiting) │
-└─────────────────┘
-```
+## Architecture
 
-## Funcionalidades
+```mermaid
+flowchart TB
+    subgraph Client["Browser (Client-Side)"]
+        LP[Landing Page]
+        DASH[Dashboard]
+        NEW[New Transcription Form]
+        DETAIL[Transcription Detail View]
+        LS[(localStorage)]
+    end
 
-### Transcrição de Arquivos de Áudio
-Upload de arquivos MP3, WAV, M4A, OGG para transcrição automática via Deepgram.
+    subgraph Server["Next.js API Routes (Server-Side)"]
+        API_FILE["/api/transcribe/file"]
+        API_YT["/api/transcribe/youtube"]
+        API_RE["/api/reprocess"]
+    end
 
-### Transcrição de Vídeos do YouTube
-Cole uma URL do YouTube e o áudio será extraído e transcrito automaticamente.
+    subgraph External["External Services"]
+        DG[Deepgram Nova-2 API]
+        OAI[OpenAI GPT-4o-mini]
+        YT[YouTube]
+    end
 
-### Processamento com IA
-Opcionalmente, processe a transcrição com prompts personalizados usando LangChain + OpenAI (resumos, extração de ações, etc).
+    LP -->|navigate| DASH
+    DASH -->|create| NEW
+    DASH -->|view| DETAIL
 
-## Stack Tecnológica
+    NEW -->|upload audio file| API_FILE
+    NEW -->|paste YouTube URL| API_YT
+    DETAIL -->|reprocess with new prompt| API_RE
 
-| Camada | Tecnologia |
-|--------|------------|
-| Frontend | Next.js 16, React 19, Tailwind CSS 4, Shadcn UI |
-| Backend | Next.js API Routes, Inngest (background jobs) |
-| Database | Supabase (PostgreSQL + Auth + Storage) |
-| IA | Deepgram (STT), LangChain + OpenAI (processamento) |
-| Infra | Upstash Redis (rate limiting) |
+    API_FILE -->|send audio buffer| DG
+    API_YT -->|download audio| YT
+    API_YT -->|send audio buffer| DG
+    API_FILE -->|optional processing| OAI
+    API_YT -->|optional processing| OAI
+    API_RE -->|process raw transcript| OAI
 
-## Configuração
+    DG -->|raw transcript| API_FILE
+    DG -->|raw transcript| API_YT
+    OAI -->|processed transcript| API_FILE
+    OAI -->|processed transcript| API_YT
+    OAI -->|processed transcript| API_RE
 
-### 1. Variáveis de Ambiente
-
-Crie um arquivo `.env.local` baseado no `.env.example`:
-
-```bash
-# Supabase
-NEXT_PUBLIC_SUPABASE_URL=https://seu-projeto.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=sua-chave-anon
-SUPABASE_SERVICE_ROLE_KEY=sua-chave-service-role
-
-# AI Services
-DEEPGRAM_API_KEY=sua-chave-deepgram
-OPENAI_API_KEY=sua-chave-openai
-
-# Rate Limiting
-UPSTASH_REDIS_REST_URL=https://seu-redis.upstash.io
-UPSTASH_REDIS_REST_TOKEN=seu-token
-
-# Inngest (produção)
-INNGEST_EVENT_KEY=sua-chave
-INNGEST_SIGNING_KEY=sua-chave
-
-# App
-NEXT_PUBLIC_APP_URL=http://localhost:3000
+    API_FILE -->|transcription JSON| LS
+    API_YT -->|transcription JSON| LS
+    API_RE -->|updated transcript| LS
+    LS -->|read| DASH
+    LS -->|read| DETAIL
 ```
 
-### 2. Configurar Supabase
+## How the AI Pipeline Works
 
-Execute o script SQL em `supabase/schema.sql` para criar as tabelas e políticas RLS.
+The application uses a two-stage AI pipeline to transform audio into structured, actionable text.
 
-### 3. Executar Localmente
+### Stage 1: Speech-to-Text (Deepgram)
 
-```bash
-# Instalar dependências
-npm install
+Audio is sent to the Deepgram Nova-2 model configured for Brazilian Portuguese (`pt-BR`). The API returns a raw transcript with word-level timestamps, speaker diarization, smart formatting, and punctuation. For YouTube videos, the audio is first extracted from the video stream using `ytdl-core` and buffered in memory before being sent to Deepgram.
 
-# Iniciar Inngest Dev Server (em um terminal)
-npx inngest-cli@latest dev
+Configuration: `model=nova-2`, `language=pt-BR`, `smart_format=true`, `punctuate=true`, `diarize=true`.
 
-# Iniciar Next.js (em outro terminal)
-npm run dev
-```
+### Stage 2: LLM Processing (OpenAI via LangChain)
 
-Acesse `http://localhost:3000`.
+This stage is optional and triggered only when the user provides a custom prompt (e.g., "extract action items", "summarize key decisions", "list topics discussed"). The raw transcript is fed into a LangChain `RunnableSequence` chain composed of:
 
-## Scripts
+1. **PromptTemplate** -- injects the raw transcript and user instructions into a system prompt that guides the model to analyze and organize the content.
+2. **ChatOpenAI** -- calls GPT-4o-mini with `temperature=0.5` for a balance between creativity and consistency.
+3. **StringOutputParser** -- extracts the plain-text result from the model response.
 
-| Comando | Descrição |
-|---------|-----------|
-| `npm run dev` | Inicia Next.js com Turbopack |
-| `npm run build` | Build de produção |
-| `npm run start` | Inicia servidor de produção |
-| `npm run lint` | Executa ESLint |
+Users can reprocess any completed transcription with a different prompt at any time without re-transcribing the audio.
 
-## Deploy
+## Tech Stack
 
-### Railway (Recomendado)
+| Layer | Technology |
+|-------|-----------|
+| Framework | Next.js 16 (App Router, Turbopack) |
+| UI | React 19, Tailwind CSS 4, Radix UI, Shadcn UI |
+| Language | TypeScript 5.7 |
+| Speech-to-Text | Deepgram Nova-2 API |
+| LLM Processing | LangChain + OpenAI GPT-4o-mini |
+| YouTube Audio | @distube/ytdl-core |
+| Storage | Browser localStorage (client-side) |
+| Theming | next-themes (system/dark/light) |
+| Testing | Jest + React Testing Library |
+| Deployment | Docker (Node.js 20 Alpine, standalone build) + Traefik reverse proxy |
 
-1. Conecte o repositório GitHub ao Railway
-2. Configure as variáveis de ambiente
-3. Build: `npm run build`
-4. Start: `npm run start`
-
-### Vercel
-
-1. Importe o projeto na Vercel
-2. Configure as variáveis de ambiente
-3. Conecte o Inngest ao projeto
-
-## Estrutura do Projeto
+## Project Structure
 
 ```
 src/
-├── app/                    # Next.js App Router
-│   ├── api/               # API Routes
-│   │   ├── transcribe/    # Endpoints de transcrição
-│   │   └── inngest/       # Handler do Inngest
-│   ├── auth/              # Páginas de autenticação
-│   ├── dashboard/         # Dashboard do usuário
-│   └── pricing/           # Página de preços
-├── components/            # Componentes React
-│   ├── ui/               # Shadcn UI primitives
-│   └── transcription/    # Componentes de transcrição
-├── lib/                   # Bibliotecas e integrações
-│   ├── ai/               # Deepgram + LangChain
-│   ├── supabase/         # Clients Supabase
-│   ├── inngest/          # Funções background
-│   └── rate-limit.ts     # Rate limiting
-└── proxy.ts              # Middleware (auth + rate limit)
+├── app/
+│   ├── api/
+│   │   ├── transcribe/
+│   │   │   ├── file/route.ts        # Audio file upload endpoint
+│   │   │   └── youtube/route.ts     # YouTube URL endpoint
+│   │   └── reprocess/route.ts       # Reprocess with new prompt
+│   ├── dashboard/
+│   │   ├── page.tsx                 # List all transcriptions
+│   │   ├── new/page.tsx             # New transcription form
+│   │   └── transcription/[id]/
+│   │       └── page.tsx             # Transcription detail view
+│   ├── layout.tsx                   # Root layout with theme provider
+│   ├── page.tsx                     # Landing page
+│   └── globals.css
+├── components/
+│   ├── layout/
+│   │   └── Header.tsx               # Sticky navigation header
+│   ├── transcription/
+│   │   ├── FileUploader.tsx         # Drag-and-drop file upload
+│   │   └── YouTubeInput.tsx         # YouTube URL input with preview
+│   └── ui/                          # Shadcn UI primitives
+├── lib/
+│   ├── ai/
+│   │   ├── whisper.ts               # Deepgram transcription + YouTube download
+│   │   └── openai.ts                # LangChain + OpenAI processing
+│   ├── storage.ts                   # localStorage CRUD wrapper
+│   ├── validation.ts                # Input validation and sanitization
+│   ├── types.ts                     # TypeScript type definitions
+│   ├── constants.ts                 # API config and limits
+│   └── utils.ts                     # CSS class utilities
+└── __tests__/
+    └── smoke.test.tsx               # Basic smoke tests
 ```
 
-## Limites por Plano
+## Features
 
-| Recurso | Gratuito | Pago |
-|---------|----------|------|
-| Transcrições/mês | 5 | Ilimitado |
-| Tamanho arquivo | 10MB | 50MB |
-| Duração vídeo | 10 min | 60 min |
+- **Audio file transcription** -- supports MP3, WAV, M4A, OGG, FLAC, WebM, AAC (up to 50MB)
+- **YouTube video transcription** -- paste any public YouTube URL (up to ~2 hours)
+- **Custom AI processing** -- provide a prompt to summarize, extract action items, highlight topics, or anything else
+- **Reprocessing** -- reprocess any transcription with a different prompt without re-transcribing
+- **Export** -- download transcriptions as TXT or copy to clipboard
+- **Dark mode** -- follows system preference via next-themes
+- **Responsive design** -- works on desktop, tablet, and mobile
 
-## Segurança
+## Getting Started
 
-- Row Level Security (RLS) no Supabase
-- Rate limiting via Upstash Redis
-- Validação de inputs em todas as APIs
-- Sanitização de prompts contra injection
+### Prerequisites
+
+- Node.js 20+
+- A [Deepgram](https://deepgram.com) API key (free tier available)
+- An [OpenAI](https://platform.openai.com) API key
+
+### Setup
+
+```bash
+# Install dependencies
+npm install
+
+# Configure environment variables
+cp .env.example .env
+# Edit .env and add your API keys:
+#   DEEPGRAM_API_KEY=your-deepgram-key
+#   OPENAI_API_KEY=your-openai-key
+
+# Start development server
+npm run dev
+```
+
+Open [http://localhost:3000](http://localhost:3000).
+
+### Scripts
+
+| Command | Description |
+|---------|-------------|
+| `npm run dev` | Start Next.js dev server with Turbopack |
+| `npm run build` | Production build |
+| `npm run start` | Start production server |
+| `npm run lint` | Run ESLint |
+| `npm run format` | Format code with Prettier |
+| `npm test` | Run Jest tests |
+
+## Docker Deployment
+
+The application ships with a multi-stage Dockerfile and a Docker Compose file preconfigured for Traefik reverse proxy with automatic HTTPS via Let's Encrypt.
+
+```bash
+# Set your API keys in .env
+echo "DEEPGRAM_API_KEY=your-key" >> .env
+echo "OPENAI_API_KEY=your-key" >> .env
+
+# Build and start
+docker compose up -d
+
+# Check logs
+docker compose logs -f
+```
+
+The container runs as a non-root user, uses the Next.js standalone output for minimal image size, and includes a health check on port 3000.
+
+## Security
+
+- Input validation and sanitization on all API routes
+- Prompt injection prevention (strips known injection patterns, code blocks, system markers)
+- YouTube URL validation with strict domain and video ID parsing
+- Audio file type and size restrictions
+- HSTS, X-Frame-Options, X-Content-Type-Options, and Referrer-Policy headers via Traefik
+- YouTube audio download capped at 200MB to prevent memory exhaustion
+- Client-side request timeouts (5 min for files, 10 min for YouTube)

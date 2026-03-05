@@ -65,6 +65,7 @@ export default function Dashboard() {
     const labels: Record<string, string> = {
       file: 'Arquivo',
       youtube: 'YouTube',
+      realtime: 'Microfone',
     };
     return labels[source] || source;
   };
@@ -102,6 +103,9 @@ export default function Dashboard() {
               </TabsTrigger>
               <TabsTrigger value="youtube">
                 YouTube ({transcriptions.filter((t) => t.source === 'youtube').length})
+              </TabsTrigger>
+              <TabsTrigger value="realtime">
+                Microfone ({transcriptions.filter((t) => t.source === 'realtime').length})
               </TabsTrigger>
             </TabsList>
 

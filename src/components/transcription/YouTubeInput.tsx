@@ -18,15 +18,30 @@ export function YouTubeInput({ onUrlChange, onError, inputId }: YouTubeInputProp
   const [thumbnail, setThumbnail] = useState<string | null>(null);
   const [videoId, setVideoId] = useState<string | null>(null);
 
-  const isValidYouTubeUrl = (url: string) => {
-    const regExp = /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.?be)\/.+/;
-    return regExp.test(url);
-  };
+  const parseYouTubeUrl = (rawUrl: string): string | null => {
+    try {
+      const parsedUrl = new URL(rawUrl);
+      const validDomains = ['youtube.com', 'www.youtube.com', 'youtu.be', 'm.youtube.com'];
+      if (!validDomains.includes(parsedUrl.hostname)) return null;
 
-  const extractVideoId = (url: string) => {
-    const regExp = /^.*((youtu.be\/)|(v\/)|(\/u\/\w\/)|(embed\/)|(watch\?))\??v?=?([^#&?]*).*/;
-    const match = url.match(regExp);
-    return match && match[7].length === 11 ? match[7] : null;
+      let id: string | null = null;
+      if (parsedUrl.hostname === 'youtu.be') {
+        id = parsedUrl.pathname.slice(1);
+      } else {
+        id = parsedUrl.searchParams.get('v');
+        if (!id && parsedUrl.pathname.startsWith('/embed/')) {
+          id = parsedUrl.pathname.split('/embed/')[1];
+        }
+        if (!id && parsedUrl.pathname.startsWith('/shorts/')) {
+          id = parsedUrl.pathname.split('/shorts/')[1];
+        }
+      }
+
+      if (!id || !/^[a-zA-Z0-9_-]{11}$/.test(id)) return null;
+      return id;
+    } catch {
+      return null;
+    }
   };
 
   const handleUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -42,7 +57,9 @@ export function YouTubeInput({ onUrlChange, onError, inputId }: YouTubeInputProp
       return;
     }
 
-    if (!isValidYouTubeUrl(newUrl)) {
+    const id = parseYouTubeUrl(newUrl);
+
+    if (!id) {
       const errorMsg = 'Por favor, insira uma URL válida do YouTube';
       setError(errorMsg);
       setIsValid(false);
@@ -54,13 +71,9 @@ export function YouTubeInput({ onUrlChange, onError, inputId }: YouTubeInputProp
 
     setError(null);
     setIsValid(true);
+    setVideoId(id);
+    setThumbnail(`https://img.youtube.com/vi/${id}/0.jpg`);
     onUrlChange(newUrl);
-
-    const id = extractVideoId(newUrl);
-    if (id) {
-      setThumbnail(`https://img.youtube.com/vi/${id}/0.jpg`);
-      setVideoId(id);
-    }
   };
 
   return (

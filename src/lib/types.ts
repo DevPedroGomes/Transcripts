@@ -1,6 +1,6 @@
 export type TranscriptionStatus = 'completed' | 'failed';
 
-export type TranscriptionSource = 'file' | 'youtube';
+export type TranscriptionSource = 'file' | 'youtube' | 'realtime';
 
 export type StoredTranscription = {
   id: string;

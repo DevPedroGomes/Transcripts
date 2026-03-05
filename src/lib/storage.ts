@@ -14,8 +14,17 @@ function getAll(): StoredTranscription[] {
   }
 }
 
-function persist(items: StoredTranscription[]) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+function persist(items: StoredTranscription[]): void {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+  } catch (e) {
+    if (e instanceof DOMException && e.name === 'QuotaExceededError') {
+      throw new Error(
+        'Armazenamento local cheio. Exclua transcrições antigas para liberar espaço.'
+      );
+    }
+    throw e;
+  }
 }
 
 export function getAllTranscriptions(): StoredTranscription[] {

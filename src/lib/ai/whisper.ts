@@ -74,6 +74,8 @@ export async function transcribeAudio(
 /**
  * Download audio from a YouTube video as a Buffer.
  */
+const MAX_AUDIO_BYTES = 200 * 1024 * 1024; // 200MB (~2h of audio)
+
 export async function downloadYouTubeAudio(youtubeUrl: string): Promise<Buffer> {
   if (!ytdl.validateURL(youtubeUrl)) {
     throw new Error('URL do YouTube inválida');
@@ -86,7 +88,15 @@ export async function downloadYouTubeAudio(youtubeUrl: string): Promise<Buffer> 
     });
 
     const chunks: Uint8Array[] = [];
+    let totalBytes = 0;
     for await (const chunk of audioStream) {
+      totalBytes += chunk.length;
+      if (totalBytes > MAX_AUDIO_BYTES) {
+        audioStream.destroy();
+        throw new Error(
+          'O vídeo é muito longo (limite: ~2 horas). Tente com um vídeo mais curto.'
+        );
+      }
       chunks.push(chunk);
     }
 
