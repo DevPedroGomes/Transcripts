@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { downloadYouTubeAudio, transcribeAudio } from '@/lib/ai/whisper';
-import { processTranscriptionWithAI } from '@/lib/ai/openai';
+import { processTranscriptionWithAI } from '@/lib/ai/groq';
 import { randomUUID } from 'crypto';
 import { sanitizePrompt, validateTitle, validateYouTubeUrl } from '@/lib/validation';
 import type { StoredTranscription, TranscribeApiResponse } from '@/lib/types';

@@ -23,7 +23,7 @@ import { LiveRecorder } from '@/components/transcription/LiveRecorder';
 import { Header } from '@/components/layout/Header';
 import { addTranscription } from '@/lib/storage';
 import { sanitizePrompt } from '@/lib/validation';
-import { FileAudio, Youtube, Mic } from 'lucide-react';
+import { FileAudio, Youtube, Mic, ArrowLeft } from 'lucide-react';
 import type { TranscribeApiResponse, StoredTranscription } from '@/lib/types';
 
 function NewTranscriptionContent() {
@@ -31,6 +31,8 @@ function NewTranscriptionContent() {
   const router = useRouter();
   const typeParam = searchParams.get('type');
   const [activeTab, setActiveTab] = useState(typeParam || 'file');
+
+  // File state
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [fileTitle, setFileTitle] = useState('');
   const [filePrompt, setFilePrompt] = useState('');
@@ -38,6 +40,7 @@ function NewTranscriptionContent() {
   const [isSubmittingFile, setIsSubmittingFile] = useState(false);
   const [fileStatus, setFileStatus] = useState('');
 
+  // YouTube state
   const [youtubeTitle, setYoutubeTitle] = useState('');
   const [youtubePrompt, setYoutubePrompt] = useState('');
   const [youtubeUrl, setYoutubeUrl] = useState('');
@@ -73,13 +76,12 @@ function NewTranscriptionContent() {
   const handleFileSubmit = useCallback(
     async (event: FormEvent<HTMLFormElement>) => {
       event.preventDefault();
-
       if (!selectedFile) {
-        setFileError('Selecione um arquivo de áudio antes de iniciar a transcrição.');
+        setFileError('Selecione um arquivo de audio.');
         return;
       }
       if (!fileTitle.trim()) {
-        setFileError('Informe um título para a transcrição.');
+        setFileError('Informe um titulo.');
         return;
       }
 
@@ -91,12 +93,9 @@ function NewTranscriptionContent() {
         const formData = new FormData();
         formData.append('title', fileTitle.trim());
         formData.append('file', selectedFile);
-        if (filePrompt.trim()) {
-          formData.append('prompt', filePrompt.trim());
-        }
+        if (filePrompt.trim()) formData.append('prompt', filePrompt.trim());
 
-        setFileStatus('Transcrevendo áudio... isso pode levar alguns minutos.');
-
+        setFileStatus('Transcrevendo audio... isso pode levar alguns minutos.');
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), 5 * 60 * 1000);
 
@@ -105,11 +104,9 @@ function NewTranscriptionContent() {
           body: formData,
           signal: controller.signal,
         });
-
         clearTimeout(timeout);
 
         const payload: TranscribeApiResponse = await response.json();
-
         if (!response.ok || !payload.success || !payload.data) {
           throw new Error(payload.error || 'Falha ao processar o arquivo.');
         }
@@ -119,7 +116,7 @@ function NewTranscriptionContent() {
         router.push(`/dashboard/transcription/${payload.data.id}`);
       } catch (error) {
         if (error instanceof DOMException && error.name === 'AbortError') {
-          setFileError('A requisição expirou. O arquivo pode ser muito grande. Tente novamente.');
+          setFileError('A requisicao expirou. Tente novamente.');
         } else {
           setFileError(error instanceof Error ? error.message : 'Falha ao processar o arquivo.');
         }
@@ -139,25 +136,22 @@ function NewTranscriptionContent() {
   const handleYoutubeSubmit = useCallback(
     async (event: FormEvent<HTMLFormElement>) => {
       event.preventDefault();
-
       if (!youtubeTitle.trim()) {
-        setYoutubeError('Informe um título para a transcrição.');
+        setYoutubeError('Informe um titulo.');
         return;
       }
       if (!youtubeUrl) {
-        setYoutubeError('Forneça uma URL válida do YouTube.');
+        setYoutubeError('Forneca uma URL valida do YouTube.');
         return;
       }
 
       setIsSubmittingYoutube(true);
       setYoutubeError(null);
-      setYoutubeStatus('Baixando áudio do YouTube...');
+      setYoutubeStatus('Baixando e transcrevendo... isso pode levar alguns minutos.');
 
       try {
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), 10 * 60 * 1000);
-
-        setYoutubeStatus('Baixando e transcrevendo... isso pode levar alguns minutos.');
 
         const response = await fetch('/api/transcribe/youtube', {
           method: 'POST',
@@ -169,13 +163,11 @@ function NewTranscriptionContent() {
           }),
           signal: controller.signal,
         });
-
         clearTimeout(timeout);
 
         const payload: TranscribeApiResponse = await response.json();
-
         if (!response.ok || !payload.success || !payload.data) {
-          throw new Error(payload.error || 'Falha ao processar o vídeo.');
+          throw new Error(payload.error || 'Falha ao processar o video.');
         }
 
         setYoutubeStatus('Salvando...');
@@ -183,9 +175,9 @@ function NewTranscriptionContent() {
         router.push(`/dashboard/transcription/${payload.data.id}`);
       } catch (error) {
         if (error instanceof DOMException && error.name === 'AbortError') {
-          setYoutubeError('A requisição expirou. O vídeo pode ser muito longo. Tente novamente.');
+          setYoutubeError('A requisicao expirou. Tente novamente.');
         } else {
-          setYoutubeError(error instanceof Error ? error.message : 'Falha ao processar o vídeo.');
+          setYoutubeError(error instanceof Error ? error.message : 'Falha ao processar o video.');
         }
       } finally {
         setIsSubmittingYoutube(false);
@@ -203,7 +195,7 @@ function NewTranscriptionContent() {
 
   const handleRealtimeSave = useCallback(async () => {
     if (!realtimeTitle.trim()) {
-      setRealtimeError('Informe um titulo para a transcricao.');
+      setRealtimeError('Informe um titulo.');
       return;
     }
     if (!realtimeTranscript) {
@@ -232,9 +224,7 @@ function NewTranscriptionContent() {
           if (res.ok && payload.success) {
             transcriptProcessed = payload.data.transcript_processed;
           }
-        } catch {
-          /* proceed without AI processing */
-        }
+        } catch { /* proceed without AI processing */ }
       }
 
       const transcription: StoredTranscription = {
@@ -254,7 +244,7 @@ function NewTranscriptionContent() {
       addTranscription(transcription);
       router.push(`/dashboard/transcription/${id}`);
     } catch (error) {
-      setRealtimeError(error instanceof Error ? error.message : 'Erro ao salvar transcricao.');
+      setRealtimeError(error instanceof Error ? error.message : 'Erro ao salvar.');
     } finally {
       setIsSubmittingRealtime(false);
       setRealtimeStatus('');
@@ -265,117 +255,100 @@ function NewTranscriptionContent() {
     <div className="flex min-h-screen flex-col">
       <Header />
       <main className="flex-1">
-        <div className="container py-8">
-          <div className="mb-6">
+        <div className="container max-w-3xl py-8">
+          {/* Back link + title */}
+          <div className="mb-8">
             <Link
               href="/dashboard"
-              className="text-sm text-gray-500 hover:text-gray-700 mb-2 inline-block"
+              className="mb-3 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
             >
-              &larr; Voltar para o Dashboard
+              <ArrowLeft className="h-3.5 w-3.5" />
+              Voltar
             </Link>
-            <h1 className="text-3xl font-bold">Nova Transcrição</h1>
-            <p className="text-gray-500 mt-1">Escolha o método de transcrição</p>
+            <h1 className="text-2xl font-bold tracking-tight">Nova Transcricao</h1>
+            <p className="mt-1 text-sm text-muted-foreground">Escolha o metodo de transcricao</p>
           </div>
 
+          {/* Tabs */}
           <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-            <TabsList className="mb-8 grid grid-cols-3 gap-4">
-              <TabsTrigger
-                value="file"
-                className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground py-6"
-              >
-                <div className="flex flex-col items-center">
-                  <FileAudio className="h-6 w-6 mb-2" />
-                  Arquivo de Audio
-                </div>
+            <TabsList className="mb-6 grid w-full grid-cols-3">
+              <TabsTrigger value="file" className="gap-2 py-3">
+                <FileAudio className="h-4 w-4" />
+                <span className="hidden sm:inline">Arquivo</span>
               </TabsTrigger>
-              <TabsTrigger
-                value="youtube"
-                className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground py-6"
-              >
-                <div className="flex flex-col items-center">
-                  <Youtube className="h-6 w-6 mb-2" />
-                  Video do YouTube
-                </div>
+              <TabsTrigger value="youtube" className="gap-2 py-3">
+                <Youtube className="h-4 w-4" />
+                <span className="hidden sm:inline">YouTube</span>
               </TabsTrigger>
-              <TabsTrigger
-                value="realtime"
-                className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground py-6"
-              >
-                <div className="flex flex-col items-center">
-                  <Mic className="h-6 w-6 mb-2" />
-                  Microfone ao Vivo
-                </div>
+              <TabsTrigger value="realtime" className="gap-2 py-3">
+                <Mic className="h-4 w-4" />
+                <span className="hidden sm:inline">Ao Vivo</span>
               </TabsTrigger>
             </TabsList>
 
+            {/* FILE TAB */}
             <TabsContent value="file" className="mt-0">
               <Card>
-                <form onSubmit={handleFileSubmit} encType="multipart/form-data" className="space-y-0">
+                <form onSubmit={handleFileSubmit} encType="multipart/form-data">
                   <CardHeader>
-                    <CardTitle>Transcrever Arquivo de Áudio</CardTitle>
+                    <CardTitle>Transcrever Arquivo de Audio</CardTitle>
                     <CardDescription>
-                      Faça upload de um arquivo de áudio (MP3, WAV, M4A, OGG, FLAC, WebM, AAC) para transcrição.
+                      MP3, WAV, M4A, OGG, FLAC, WebM, AAC (max 50MB)
                     </CardDescription>
                   </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      {fileError && (
-                        <Alert variant="destructive">
-                          <AlertDescription>{fileError}</AlertDescription>
-                        </Alert>
-                      )}
-
-                      <div>
-                        <Label htmlFor="file-title">Título da Transcrição</Label>
-                        <Input
-                          id="file-title"
-                          placeholder="Ex: Reunião de Planejamento"
-                          className="mt-1"
-                          value={fileTitle}
-                          onChange={(e) => setFileTitle(e.target.value)}
-                          required
-                        />
-                      </div>
-
-                      <FileUploader
-                        onFileChange={handleFileChange}
-                        onError={(message) => setFileError(message)}
-                        acceptedFileTypes={['.mp3', '.wav', '.m4a', '.ogg', '.flac', '.webm', '.aac']}
-                        maxSizeMB={50}
+                  <CardContent className="space-y-5">
+                    {fileError && (
+                      <Alert variant="destructive">
+                        <AlertDescription>{fileError}</AlertDescription>
+                      </Alert>
+                    )}
+                    <div className="space-y-2">
+                      <Label htmlFor="file-title">Titulo</Label>
+                      <Input
+                        id="file-title"
+                        placeholder="Ex: Reuniao de Planejamento"
+                        value={fileTitle}
+                        onChange={(e) => setFileTitle(e.target.value)}
+                        required
                       />
-
-                      <div>
-                        <Label htmlFor="file-prompt">Prompt de Processamento (Opcional)</Label>
-                        <Textarea
-                          id="file-prompt"
-                          placeholder="Ex: Destaque os pontos relacionados a vendas e oportunidades de mercado"
-                          className="mt-1 min-h-24"
-                          value={filePrompt}
-                          onChange={(e) => setFilePrompt(e.target.value)}
-                        />
-                        <p className="text-xs text-gray-500 mt-1">
-                          A IA irá processar a transcrição de acordo com seu prompt após concluir.
-                        </p>
-                      </div>
+                    </div>
+                    <FileUploader
+                      onFileChange={handleFileChange}
+                      onError={(msg) => setFileError(msg)}
+                      acceptedFileTypes={['.mp3', '.wav', '.m4a', '.ogg', '.flac', '.webm', '.aac']}
+                      maxSizeMB={50}
+                    />
+                    <div className="space-y-2">
+                      <Label htmlFor="file-prompt">Prompt de Processamento (Opcional)</Label>
+                      <Textarea
+                        id="file-prompt"
+                        placeholder="Ex: Destaque os pontos sobre vendas"
+                        className="min-h-20"
+                        value={filePrompt}
+                        onChange={(e) => setFilePrompt(e.target.value)}
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        A IA processara a transcricao com base no prompt.
+                      </p>
                     </div>
                   </CardContent>
-                  <CardFooter className="flex flex-col gap-3">
+                  <CardFooter className="flex flex-col gap-3 border-t pt-6">
                     {isSubmittingFile && fileStatus && (
-                      <p className="text-sm text-gray-500 w-full text-center animate-pulse">
+                      <p className="w-full text-center text-sm text-muted-foreground animate-pulse">
                         {fileStatus}
                       </p>
                     )}
-                    <div className="flex justify-between w-full">
+                    <div className="flex w-full justify-end gap-3">
                       <Button
                         type="button"
-                        variant="outline"
+                        variant="ghost"
                         onClick={() => router.push('/dashboard')}
                         disabled={isSubmittingFile}
                       >
                         Cancelar
                       </Button>
                       <Button type="submit" disabled={isSubmittingFile}>
-                        {isSubmittingFile ? 'Processando...' : 'Iniciar Transcrição'}
+                        {isSubmittingFile ? 'Processando...' : 'Iniciar Transcricao'}
                       </Button>
                     </div>
                   </CardFooter>
@@ -383,76 +356,71 @@ function NewTranscriptionContent() {
               </Card>
             </TabsContent>
 
+            {/* YOUTUBE TAB */}
             <TabsContent value="youtube" className="mt-0">
               <Card>
-                <form onSubmit={handleYoutubeSubmit} className="space-y-0">
+                <form onSubmit={handleYoutubeSubmit}>
                   <CardHeader>
-                    <CardTitle>Transcrever Vídeo do YouTube</CardTitle>
+                    <CardTitle>Transcrever Video do YouTube</CardTitle>
                     <CardDescription>
-                      Cole a URL de um vídeo do YouTube para transcrever seu áudio.
+                      Cole a URL de um video publico para transcrever o audio.
                     </CardDescription>
                   </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      {youtubeError && (
-                        <Alert variant="destructive">
-                          <AlertDescription>{youtubeError}</AlertDescription>
-                        </Alert>
-                      )}
-
-                      <div>
-                        <Label htmlFor="youtube-title">Título da Transcrição</Label>
-                        <Input
-                          id="youtube-title"
-                          placeholder="Ex: Tutorial de Next.js"
-                          className="mt-1"
-                          value={youtubeTitle}
-                          onChange={(e) => setYoutubeTitle(e.target.value)}
-                          required
-                        />
-                      </div>
-
-                      <div>
-                        <Label htmlFor="youtube-url">URL do YouTube</Label>
-                        <YouTubeInput
-                          inputId="youtube-url"
-                          onUrlChange={handleYoutubeUrlChange}
-                          onError={(message) => setYoutubeError(message)}
-                        />
-                      </div>
-
-                      <div>
-                        <Label htmlFor="youtube-prompt">Prompt de Processamento (Opcional)</Label>
-                        <Textarea
-                          id="youtube-prompt"
-                          placeholder="Ex: Extraia os principais conceitos e crie um resumo estruturado"
-                          className="mt-1 min-h-24"
-                          value={youtubePrompt}
-                          onChange={(e) => setYoutubePrompt(e.target.value)}
-                        />
-                        <p className="text-xs text-gray-500 mt-1">
-                          A IA irá processar a transcrição de acordo com seu prompt após concluir.
-                        </p>
-                      </div>
+                  <CardContent className="space-y-5">
+                    {youtubeError && (
+                      <Alert variant="destructive">
+                        <AlertDescription>{youtubeError}</AlertDescription>
+                      </Alert>
+                    )}
+                    <div className="space-y-2">
+                      <Label htmlFor="youtube-title">Titulo</Label>
+                      <Input
+                        id="youtube-title"
+                        placeholder="Ex: Tutorial de Next.js"
+                        value={youtubeTitle}
+                        onChange={(e) => setYoutubeTitle(e.target.value)}
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="youtube-url">URL do YouTube</Label>
+                      <YouTubeInput
+                        inputId="youtube-url"
+                        onUrlChange={handleYoutubeUrlChange}
+                        onError={(msg) => setYoutubeError(msg)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="youtube-prompt">Prompt de Processamento (Opcional)</Label>
+                      <Textarea
+                        id="youtube-prompt"
+                        placeholder="Ex: Extraia os principais conceitos"
+                        className="min-h-20"
+                        value={youtubePrompt}
+                        onChange={(e) => setYoutubePrompt(e.target.value)}
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        A IA processara a transcricao com base no prompt.
+                      </p>
                     </div>
                   </CardContent>
-                  <CardFooter className="flex flex-col gap-3">
+                  <CardFooter className="flex flex-col gap-3 border-t pt-6">
                     {isSubmittingYoutube && youtubeStatus && (
-                      <p className="text-sm text-gray-500 w-full text-center animate-pulse">
+                      <p className="w-full text-center text-sm text-muted-foreground animate-pulse">
                         {youtubeStatus}
                       </p>
                     )}
-                    <div className="flex justify-between w-full">
+                    <div className="flex w-full justify-end gap-3">
                       <Button
                         type="button"
-                        variant="outline"
+                        variant="ghost"
                         onClick={() => router.push('/dashboard')}
                         disabled={isSubmittingYoutube}
                       >
                         Cancelar
                       </Button>
                       <Button type="submit" disabled={isSubmittingYoutube}>
-                        {isSubmittingYoutube ? 'Processando...' : 'Iniciar Transcrição'}
+                        {isSubmittingYoutube ? 'Processando...' : 'Iniciar Transcricao'}
                       </Button>
                     </div>
                   </CardFooter>
@@ -460,65 +428,60 @@ function NewTranscriptionContent() {
               </Card>
             </TabsContent>
 
+            {/* REALTIME TAB */}
             <TabsContent value="realtime" className="mt-0">
               <Card>
                 <CardHeader>
                   <CardTitle>Transcricao em Tempo Real</CardTitle>
                   <CardDescription>
-                    Use seu microfone para transcrever audio ao vivo com IA.
+                    Use seu microfone para transcrever audio ao vivo.
                   </CardDescription>
                 </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {realtimeError && (
-                      <Alert variant="destructive">
-                        <AlertDescription>{realtimeError}</AlertDescription>
-                      </Alert>
-                    )}
-
-                    <div>
-                      <Label htmlFor="realtime-title">Titulo da Transcricao</Label>
-                      <Input
-                        id="realtime-title"
-                        placeholder="Ex: Reuniao de Planejamento"
-                        className="mt-1"
-                        value={realtimeTitle}
-                        onChange={(e) => setRealtimeTitle(e.target.value)}
-                      />
-                    </div>
-
-                    <LiveRecorder onTranscriptionComplete={handleRealtimeComplete} />
-
-                    {realtimeTranscript && (
-                      <div>
-                        <Label htmlFor="realtime-prompt">
-                          Prompt de Processamento (Opcional)
-                        </Label>
-                        <Textarea
-                          id="realtime-prompt"
-                          placeholder="Ex: Faca um resumo estruturado com os pontos principais"
-                          className="mt-1 min-h-24"
-                          value={realtimePrompt}
-                          onChange={(e) => setRealtimePrompt(e.target.value)}
-                        />
-                        <p className="text-xs text-gray-500 mt-1">
-                          A IA ira processar a transcricao de acordo com seu prompt ao salvar.
-                        </p>
-                      </div>
-                    )}
+                <CardContent className="space-y-5">
+                  {realtimeError && (
+                    <Alert variant="destructive">
+                      <AlertDescription>{realtimeError}</AlertDescription>
+                    </Alert>
+                  )}
+                  <div className="space-y-2">
+                    <Label htmlFor="realtime-title">Titulo</Label>
+                    <Input
+                      id="realtime-title"
+                      placeholder="Ex: Reuniao de Planejamento"
+                      value={realtimeTitle}
+                      onChange={(e) => setRealtimeTitle(e.target.value)}
+                    />
                   </div>
+
+                  <LiveRecorder onTranscriptionComplete={handleRealtimeComplete} />
+
+                  {realtimeTranscript && (
+                    <div className="space-y-2">
+                      <Label htmlFor="realtime-prompt">Prompt de Processamento (Opcional)</Label>
+                      <Textarea
+                        id="realtime-prompt"
+                        placeholder="Ex: Faca um resumo estruturado"
+                        className="min-h-20"
+                        value={realtimePrompt}
+                        onChange={(e) => setRealtimePrompt(e.target.value)}
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        A IA processara a transcricao com base no prompt ao salvar.
+                      </p>
+                    </div>
+                  )}
                 </CardContent>
                 {realtimeTranscript && (
-                  <CardFooter className="flex flex-col gap-3">
+                  <CardFooter className="flex flex-col gap-3 border-t pt-6">
                     {isSubmittingRealtime && realtimeStatus && (
-                      <p className="text-sm text-gray-500 w-full text-center animate-pulse">
+                      <p className="w-full text-center text-sm text-muted-foreground animate-pulse">
                         {realtimeStatus}
                       </p>
                     )}
-                    <div className="flex justify-between w-full">
+                    <div className="flex w-full justify-end gap-3">
                       <Button
                         type="button"
-                        variant="outline"
+                        variant="ghost"
                         onClick={() => router.push('/dashboard')}
                         disabled={isSubmittingRealtime}
                       >
@@ -546,10 +509,7 @@ function NewTranscriptionContent() {
 function LoadingFallback() {
   return (
     <div className="flex min-h-screen items-center justify-center">
-      <div className="text-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-        <p className="text-gray-500">Carregando...</p>
-      </div>
+      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
     </div>
   );
 }

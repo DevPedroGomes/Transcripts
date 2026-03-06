@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { processTranscriptionWithAI } from '@/lib/ai/openai';
+import { processTranscriptionWithAI } from '@/lib/ai/groq';
 import { sanitizePrompt } from '@/lib/validation';
 
 export async function POST(request: NextRequest) {

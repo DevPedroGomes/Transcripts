@@ -51,7 +51,7 @@ export function LiveRecorder({ onTranscriptionComplete }: LiveRecorderProps) {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       {error && (
         <Alert variant="destructive">
           <AlertDescription>{error}</AlertDescription>
@@ -59,7 +59,7 @@ export function LiveRecorder({ onTranscriptionComplete }: LiveRecorderProps) {
       )}
 
       {/* Controls */}
-      <div className="flex items-center justify-center gap-4">
+      <div className="flex items-center justify-center gap-4 py-4">
         {state === 'idle' && !hasTranscript && (
           <Button type="button" onClick={start} className="gap-2" size="lg">
             <Mic className="h-5 w-5" />
@@ -69,19 +69,19 @@ export function LiveRecorder({ onTranscriptionComplete }: LiveRecorderProps) {
 
         {isRequesting && (
           <Button disabled size="lg" className="gap-2">
-            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
+            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current" />
             Conectando...
           </Button>
         )}
 
         {isRecording && (
-          <>
-            <div className="flex items-center gap-3">
+          <div className="flex items-center gap-5">
+            <div className="flex items-center gap-3 rounded-full bg-destructive/10 px-4 py-2">
               <div className="relative">
-                <div className="h-3 w-3 bg-red-500 rounded-full" />
-                <div className="absolute inset-0 h-3 w-3 bg-red-500 rounded-full animate-ping" />
+                <div className="h-3 w-3 bg-destructive rounded-full" />
+                <div className="absolute inset-0 h-3 w-3 bg-destructive rounded-full animate-ping" />
               </div>
-              <span className="text-sm font-mono font-medium">
+              <span className="text-sm font-mono font-medium text-destructive">
                 {formatTime(elapsedSeconds)} / {formatTime(maxSeconds)}
               </span>
             </div>
@@ -95,7 +95,7 @@ export function LiveRecorder({ onTranscriptionComplete }: LiveRecorderProps) {
               <Square className="h-4 w-4" />
               Parar
             </Button>
-          </>
+          </div>
         )}
 
         {state === 'error' && (
@@ -108,21 +108,23 @@ export function LiveRecorder({ onTranscriptionComplete }: LiveRecorderProps) {
 
       {/* Live transcript display */}
       {(isRecording || hasTranscript) && (
-        <div className="border rounded-lg p-4 min-h-[120px] max-h-[300px] overflow-y-auto bg-gray-50 dark:bg-gray-900">
-          {finalText && <span className="text-sm">{finalText}</span>}
+        <div className="rounded-lg border bg-muted/40 p-5 min-h-[140px] max-h-[320px] overflow-y-auto">
+          {finalText && <span className="text-sm leading-relaxed">{finalText}</span>}
           {interimText && (
-            <span className="text-sm text-gray-400 italic">
+            <span className="text-sm text-muted-foreground italic">
               {finalText ? ' ' : ''}
               {interimText}
             </span>
           )}
           {isRecording && !finalText && !interimText && (
-            <p className="text-sm text-gray-400 animate-pulse">Ouvindo... comece a falar.</p>
+            <p className="text-sm text-muted-foreground animate-pulse">
+              Ouvindo... comece a falar.
+            </p>
           )}
         </div>
       )}
 
-      <p className="text-xs text-gray-500 text-center">
+      <p className="text-xs text-muted-foreground text-center">
         Limite de {maxSeconds / 60} minutos por sessao. Transcricao via Deepgram Nova-3 em
         portugues.
       </p>

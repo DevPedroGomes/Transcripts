@@ -1,7 +1,28 @@
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { FileAudio, Youtube, Mic } from 'lucide-react';
+import { FileAudio, Youtube, Mic, ArrowRight } from 'lucide-react';
 import { Header } from '@/components/layout/Header';
+
+const features = [
+  {
+    icon: FileAudio,
+    title: 'Arquivos de Audio',
+    description: 'Upload de arquivos MP3, WAV, M4A, OGG, FLAC, WebM e AAC com ate 50MB.',
+    href: '/dashboard/new?type=file',
+  },
+  {
+    icon: Youtube,
+    title: 'Videos do YouTube',
+    description: 'Cole o link de qualquer video publico do YouTube e extraia o texto completo.',
+    href: '/dashboard/new?type=youtube',
+  },
+  {
+    icon: Mic,
+    title: 'Microfone ao Vivo',
+    description: 'Transcreva em tempo real usando seu microfone com Deepgram Nova-3.',
+    href: '/dashboard/new?type=realtime',
+  },
+];
 
 export default function Home() {
   return (
@@ -9,63 +30,78 @@ export default function Home() {
       <Header
         rightContent={
           <Link href="/dashboard">
-            <Button variant="outline" size="sm">Dashboard</Button>
+            <Button variant="outline" size="sm">
+              Dashboard
+            </Button>
           </Link>
         }
       />
+
       <main className="flex-1">
-        <section className="py-24 md:py-32">
-          <div className="container flex flex-col items-center justify-center space-y-6 text-center">
-            <div className="space-y-3">
-              <h1 className="text-4xl font-bold tracking-tighter sm:text-5xl md:text-6xl">
-                Transforme Áudio em Texto com IA
-              </h1>
-              <p className="mx-auto max-w-[700px] text-gray-500 md:text-xl dark:text-gray-400">
-                Transcreva reuniões, aulas, entrevistas e qualquer conteúdo de áudio com precisão
-                usando tecnologia de ponta em IA.
-              </p>
+        {/* Hero */}
+        <section className="py-20 md:py-32">
+          <div className="container flex flex-col items-center text-center">
+            <h1 className="max-w-3xl text-4xl font-bold tracking-tight sm:text-5xl md:text-6xl">
+              Transforme Audio em Texto com IA
+            </h1>
+            <p className="mt-6 max-w-2xl text-lg text-muted-foreground">
+              Transcreva reunioes, aulas, entrevistas e qualquer conteudo de audio com precisao.
+              Upload de arquivos, links do YouTube ou gravacao ao vivo.
+            </p>
+            <div className="mt-10 flex gap-4">
+              <Link href="/dashboard/new">
+                <Button size="lg" className="gap-2">
+                  Comecar <ArrowRight className="h-4 w-4" />
+                </Button>
+              </Link>
+              <Link href="/dashboard">
+                <Button size="lg" variant="outline">
+                  Ver Dashboard
+                </Button>
+              </Link>
             </div>
-            <Link href="/dashboard">
-              <Button size="lg">Começar</Button>
-            </Link>
           </div>
         </section>
-        <section className="container py-12 md:py-24">
-          <div className="grid gap-8 md:grid-cols-3 max-w-4xl mx-auto">
-            <div className="flex flex-col items-center space-y-4 rounded-lg border p-6">
-              <div className="rounded-full bg-primary/10 p-4">
-                <FileAudio className="h-6 w-6 text-primary" />
-              </div>
-              <h3 className="text-xl font-bold">Arquivos de Audio</h3>
-              <p className="text-center text-gray-500 dark:text-gray-400">
-                Faca upload de arquivos MP3, WAV, M4A e outros formatos para transcricao.
-              </p>
+
+        {/* Features */}
+        <section className="border-t bg-muted/30 py-20">
+          <div className="container">
+            <h2 className="mb-12 text-center text-2xl font-semibold tracking-tight">
+              Tres formas de transcrever
+            </h2>
+            <div className="mx-auto grid max-w-4xl gap-6 md:grid-cols-3">
+              {features.map((f) => (
+                <Link
+                  key={f.title}
+                  href={f.href}
+                  className="group rounded-xl border bg-card p-6 transition-all hover:border-primary/50 hover:shadow-md"
+                >
+                  <div className="mb-4 inline-flex rounded-lg bg-primary/10 p-3">
+                    <f.icon className="h-6 w-6 text-primary" />
+                  </div>
+                  <h3 className="mb-2 font-semibold">{f.title}</h3>
+                  <p className="text-sm leading-relaxed text-muted-foreground">{f.description}</p>
+                </Link>
+              ))}
             </div>
-            <div className="flex flex-col items-center space-y-4 rounded-lg border p-6">
-              <div className="rounded-full bg-primary/10 p-4">
-                <Youtube className="h-6 w-6 text-primary" />
-              </div>
-              <h3 className="text-xl font-bold">Videos do YouTube</h3>
-              <p className="text-center text-gray-500 dark:text-gray-400">
-                Cole o link de qualquer video do YouTube e extraia o texto completo.
-              </p>
-            </div>
-            <div className="flex flex-col items-center space-y-4 rounded-lg border p-6">
-              <div className="rounded-full bg-primary/10 p-4">
-                <Mic className="h-6 w-6 text-primary" />
-              </div>
-              <h3 className="text-xl font-bold">Microfone ao Vivo</h3>
-              <p className="text-center text-gray-500 dark:text-gray-400">
-                Transcreva em tempo real usando seu microfone com Deepgram Nova-3.
-              </p>
-            </div>
+          </div>
+        </section>
+
+        {/* Tech stack */}
+        <section className="border-t py-16">
+          <div className="container text-center">
+            <p className="text-sm text-muted-foreground">
+              Deepgram Nova-3 &middot; Groq Llama 3.3 &middot; Next.js 16 &middot; React 19
+              &middot; Tailwind CSS 4
+            </p>
           </div>
         </section>
       </main>
+
       <footer className="border-t py-6">
         <div className="container text-center">
-          <p className="text-sm text-gray-500 dark:text-gray-400">
-            &copy; {new Date().getFullYear()} MeetingsTranscript. Todos os direitos reservados.
+          <p className="text-sm text-muted-foreground">
+            &copy; {new Date().getFullYear()} MeetingsTranscript
           </p>
         </div>
       </footer>

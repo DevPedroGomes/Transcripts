@@ -1,6 +1,7 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import Link from 'next/link';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useState, useEffect } from 'react';
@@ -8,7 +9,19 @@ import { useRouter, useParams } from 'next/navigation';
 import { Header } from '@/components/layout/Header';
 import { getTranscriptionById, updateTranscription, deleteTranscription } from '@/lib/storage';
 import type { StoredTranscription } from '@/lib/types';
-import { Download, Copy, Trash2, RefreshCw, Check } from 'lucide-react';
+import {
+  Download,
+  Copy,
+  Trash2,
+  RefreshCw,
+  Check,
+  ArrowLeft,
+  FileAudio,
+  Youtube,
+  Mic,
+  Clock,
+  Calendar,
+} from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 
 export default function TranscriptionDetails() {
@@ -35,7 +48,7 @@ export default function TranscriptionDetails() {
   }, [params.id]);
 
   const handleDelete = () => {
-    if (!confirm('Tem certeza que deseja excluir esta transcrição?')) return;
+    if (!confirm('Tem certeza que deseja excluir esta transcricao?')) return;
     deleteTranscription(params.id);
     router.push('/dashboard');
   };
@@ -102,7 +115,7 @@ export default function TranscriptionDetails() {
   };
 
   const formatDuration = (seconds?: number) => {
-    if (!seconds) return '—';
+    if (!seconds) return null;
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins}:${secs.toString().padStart(2, '0')}`;
@@ -127,10 +140,19 @@ export default function TranscriptionDetails() {
     return labels[source] || source;
   };
 
+  const getSourceIcon = (source: string) => {
+    const icons: Record<string, React.ReactNode> = {
+      file: <FileAudio className="h-4 w-4" />,
+      youtube: <Youtube className="h-4 w-4" />,
+      realtime: <Mic className="h-4 w-4" />,
+    };
+    return icons[source] || null;
+  };
+
   const getStatusBadge = (status: string) => {
     const styles: Record<string, string> = {
-      completed: 'bg-green-50 text-green-700 ring-green-600/20',
-      failed: 'bg-red-50 text-red-700 ring-red-600/20',
+      completed: 'bg-emerald-500/10 text-emerald-600 ring-emerald-500/20',
+      failed: 'bg-destructive/10 text-destructive ring-destructive/20',
     };
     const labels: Record<string, string> = {
       completed: 'Completada',
@@ -138,7 +160,7 @@ export default function TranscriptionDetails() {
     };
     return (
       <span
-        className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ring-1 ring-inset ${styles[status] || 'bg-gray-50 text-gray-700 ring-gray-600/20'}`}
+        className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset ${styles[status] || 'bg-muted text-muted-foreground ring-border'}`}
       >
         {labels[status] || status}
       </span>
@@ -148,10 +170,7 @@ export default function TranscriptionDetails() {
   if (isLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-gray-500">Carregando transcrição...</p>
-        </div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
       </div>
     );
   }
@@ -161,8 +180,8 @@ export default function TranscriptionDetails() {
       <div className="flex min-h-screen flex-col">
         <Header />
         <main className="flex-1 flex items-center justify-center">
-          <div className="text-center">
-            <p className="text-red-500 mb-4">Transcrição não encontrada.</p>
+          <div className="text-center space-y-4">
+            <p className="text-muted-foreground">Transcricao nao encontrada.</p>
             <Link href="/dashboard">
               <Button>Voltar ao Dashboard</Button>
             </Link>
@@ -181,156 +200,176 @@ export default function TranscriptionDetails() {
     <div className="flex min-h-screen flex-col">
       <Header />
       <main className="flex-1">
-        <div className="container py-8">
-          <div className="mb-6">
-            <Link
-              href="/dashboard"
-              className="text-sm text-gray-500 hover:text-gray-700 mb-2 inline-block"
-            >
-              &larr; Voltar para o Dashboard
-            </Link>
-            <h1 className="text-3xl font-bold">{transcription.title}</h1>
-            <div className="flex gap-2 mt-3">
-              <Button variant="outline" size="sm" onClick={handleExportTxt} title="Exportar TXT">
-                <Download className="h-4 w-4 mr-1" />
-                Exportar
-              </Button>
-              <Button variant="outline" size="sm" onClick={handleCopy} title="Copiar texto">
-                {copied ? (
-                  <Check className="h-4 w-4 mr-1" />
-                ) : (
-                  <Copy className="h-4 w-4 mr-1" />
-                )}
-                {copied ? 'Copiado!' : 'Copiar'}
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleDelete}
-                className="text-red-500 hover:text-red-700"
-                title="Excluir"
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
+        <div className="container max-w-4xl py-8 space-y-6">
+          {/* Back link */}
+          <Link
+            href="/dashboard"
+            className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Voltar ao Dashboard
+          </Link>
+
+          {/* Header section */}
+          <div className="space-y-4">
+            <div className="flex items-start justify-between gap-4">
+              <h1 className="text-2xl font-bold tracking-tight">{transcription.title}</h1>
+              <div className="flex items-center gap-2 shrink-0">
+                <Button variant="outline" size="sm" onClick={handleCopy} title="Copiar texto">
+                  {copied ? (
+                    <Check className="h-4 w-4" />
+                  ) : (
+                    <Copy className="h-4 w-4" />
+                  )}
+                </Button>
+                <Button variant="outline" size="sm" onClick={handleExportTxt} title="Exportar TXT">
+                  <Download className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleDelete}
+                  className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                  title="Excluir"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
-            <div className="flex items-center gap-4 mt-2 flex-wrap">
+
+            {/* Metadata */}
+            <div className="flex items-center gap-3 flex-wrap text-sm text-muted-foreground">
               {getStatusBadge(transcription.status)}
-              <span className="text-sm text-gray-500">{getSourceLabel(transcription.source)}</span>
-              {transcription.duration_seconds && (
-                <span className="text-sm text-gray-500">
+              <span className="inline-flex items-center gap-1.5">
+                {getSourceIcon(transcription.source)}
+                {getSourceLabel(transcription.source)}
+              </span>
+              {formatDuration(transcription.duration_seconds) && (
+                <span className="inline-flex items-center gap-1">
+                  <Clock className="h-3.5 w-3.5" />
                   {formatDuration(transcription.duration_seconds)}
                 </span>
               )}
-              <span className="text-sm text-gray-500">
-                Criada em {formatDate(transcription.created_at)}
+              <span className="inline-flex items-center gap-1">
+                <Calendar className="h-3.5 w-3.5" />
+                {formatDate(transcription.created_at)}
               </span>
             </div>
+
+            {/* Prompt used */}
             {transcription.prompt && (
-              <div className="mt-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                <p className="text-xs text-gray-500 mb-1">Prompt utilizado:</p>
-                <p className="text-sm text-gray-700 dark:text-gray-300">{transcription.prompt}</p>
+              <div className="rounded-lg border bg-muted/40 px-4 py-3">
+                <p className="text-xs font-medium text-muted-foreground mb-1">Prompt utilizado:</p>
+                <p className="text-sm">{transcription.prompt}</p>
               </div>
             )}
           </div>
 
+          {/* Content */}
           {transcription.status === 'failed' ? (
-            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-6 text-center">
-              <p className="text-red-700 dark:text-red-300">
-                Ocorreu um erro ao processar sua transcrição. Por favor, tente novamente.
-              </p>
-              <Link href="/dashboard/new">
-                <Button variant="outline" size="sm" className="mt-4">
-                  Criar Nova Transcrição
-                </Button>
-              </Link>
-            </div>
+            <Card className="border-destructive/30">
+              <CardContent className="flex flex-col items-center justify-center py-12 space-y-4">
+                <p className="text-muted-foreground text-center">
+                  Ocorreu um erro ao processar sua transcricao. Por favor, tente novamente.
+                </p>
+                <Link href="/dashboard/new">
+                  <Button variant="outline" size="sm">
+                    Criar Nova Transcricao
+                  </Button>
+                </Link>
+              </CardContent>
+            </Card>
           ) : (
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsList className="mb-4">
+              <TabsList>
                 {hasProcessedContent && (
-                  <TabsTrigger value="transcript">Transcrição Processada</TabsTrigger>
+                  <TabsTrigger value="transcript">Processada</TabsTrigger>
                 )}
-                <TabsTrigger value="raw">Transcrição Original</TabsTrigger>
+                <TabsTrigger value="raw">Original</TabsTrigger>
               </TabsList>
 
               {hasProcessedContent && (
-                <TabsContent value="transcript" className="mt-0">
-                  <div className="bg-white dark:bg-gray-900 border rounded-lg p-6">
-                    <div className="prose dark:prose-invert max-w-none">
-                      <pre className="whitespace-pre-wrap text-sm font-sans">
+                <TabsContent value="transcript" className="mt-4">
+                  <Card>
+                    <CardContent className="p-6">
+                      <pre className="whitespace-pre-wrap text-sm font-sans leading-relaxed">
                         {transcription.transcript_processed}
                       </pre>
-                    </div>
-                  </div>
+                    </CardContent>
+                  </Card>
                 </TabsContent>
               )}
 
-              <TabsContent value="raw" className="mt-0">
-                <div className="bg-white dark:bg-gray-900 border rounded-lg p-6">
-                  {hasRawContent ? (
-                    <div className="prose dark:prose-invert max-w-none">
-                      <pre className="whitespace-pre-wrap text-sm font-sans">
+              <TabsContent value="raw" className="mt-4">
+                <Card>
+                  <CardContent className="p-6">
+                    {hasRawContent ? (
+                      <pre className="whitespace-pre-wrap text-sm font-sans leading-relaxed">
                         {transcription.transcript_raw}
                       </pre>
-                    </div>
-                  ) : (
-                    <p className="text-gray-500 text-center py-8">
-                      Nenhum conteúdo de transcrição disponível.
-                    </p>
-                  )}
-                </div>
+                    ) : (
+                      <p className="text-muted-foreground text-center py-8">
+                        Nenhum conteudo de transcricao disponivel.
+                      </p>
+                    )}
+                  </CardContent>
+                </Card>
               </TabsContent>
             </Tabs>
           )}
 
+          {/* Reprocess section */}
           {transcription.status === 'completed' && hasRawContent && (
-            <div className="mt-8">
+            <div className="pt-2">
               {showReprocess ? (
-                <div className="border rounded-lg p-6 space-y-4">
-                  <h3 className="font-semibold">Reprocessar com novo prompt</h3>
-                  <Textarea
-                    placeholder="Ex: Crie uma lista com os principais tópicos discutidos..."
-                    value={reprocessPrompt}
-                    onChange={(e) => setReprocessPrompt(e.target.value)}
-                    className="min-h-24"
-                  />
-                  {reprocessError && (
-                    <p className="text-sm text-red-500">{reprocessError}</p>
-                  )}
-                  <div className="flex gap-2">
-                    <Button
-                      onClick={handleReprocess}
-                      disabled={isReprocessing || !reprocessPrompt.trim()}
-                    >
-                      {isReprocessing ? (
-                        <>
-                          <RefreshCw className="h-4 w-4 mr-1 animate-spin" />
-                          Reprocessando...
-                        </>
-                      ) : (
-                        'Reprocessar'
-                      )}
-                    </Button>
-                    <Button
-                      variant="outline"
-                      onClick={() => {
-                        setShowReprocess(false);
-                        setReprocessPrompt('');
-                        setReprocessError(null);
-                      }}
-                    >
-                      Cancelar
-                    </Button>
-                  </div>
-                </div>
+                <Card>
+                  <CardHeader>
+                    <h3 className="font-semibold">Reprocessar com novo prompt</h3>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <Textarea
+                      placeholder="Ex: Crie uma lista com os principais topicos discutidos..."
+                      value={reprocessPrompt}
+                      onChange={(e) => setReprocessPrompt(e.target.value)}
+                      className="min-h-24"
+                    />
+                    {reprocessError && (
+                      <p className="text-sm text-destructive">{reprocessError}</p>
+                    )}
+                    <div className="flex gap-2">
+                      <Button
+                        onClick={handleReprocess}
+                        disabled={isReprocessing || !reprocessPrompt.trim()}
+                      >
+                        {isReprocessing ? (
+                          <>
+                            <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                            Reprocessando...
+                          </>
+                        ) : (
+                          'Reprocessar'
+                        )}
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        onClick={() => {
+                          setShowReprocess(false);
+                          setReprocessPrompt('');
+                          setReprocessError(null);
+                        }}
+                      >
+                        Cancelar
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
               ) : (
-                <div className="text-center">
-                  <p className="text-gray-500 mb-4">
-                    Não está satisfeito com o resultado? Experimente processar novamente com um
-                    prompt diferente.
+                <div className="flex flex-col items-center gap-3 py-4">
+                  <p className="text-sm text-muted-foreground">
+                    Nao esta satisfeito? Reprocesse com um prompt diferente.
                   </p>
-                  <Button variant="outline" onClick={() => setShowReprocess(true)}>
-                    <RefreshCw className="h-4 w-4 mr-1" />
+                  <Button variant="outline" size="sm" onClick={() => setShowReprocess(true)}>
+                    <RefreshCw className="h-4 w-4 mr-2" />
                     Reprocessar com Novo Prompt
                   </Button>
                 </div>
