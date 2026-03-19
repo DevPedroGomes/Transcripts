@@ -1,8 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { processTranscriptionWithAI } from '@/lib/ai/groq';
 import { sanitizePrompt } from '@/lib/validation';
+import { getClientIP, checkRateLimit } from '@/lib/rate-limiter';
 
 export async function POST(request: NextRequest) {
+  const ip = getClientIP(request);
+  const rateCheck = checkRateLimit(ip, 'reprocess', { maxRequests: 15, windowMs: 60 * 60 * 1000 });
+  if (rateCheck.limited) {
+    return NextResponse.json(
+      { success: false, error: rateCheck.reason },
+      { status: 429 }
+    );
+  }
+
   try {
     const body = await request.json();
     const { transcriptRaw, prompt: rawPrompt } = body;

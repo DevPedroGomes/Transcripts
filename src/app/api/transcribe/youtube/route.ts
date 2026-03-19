@@ -1,11 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { downloadYouTubeAudio, transcribeAudio } from '@/lib/ai/whisper';
+import { downloadYouTubeAudio, transcribeAudio } from '@/lib/ai/deepgram';
 import { processTranscriptionWithAI } from '@/lib/ai/groq';
 import { randomUUID } from 'crypto';
 import { sanitizePrompt, validateTitle, validateYouTubeUrl } from '@/lib/validation';
+import { getClientIP, checkRateLimit } from '@/lib/rate-limiter';
 import type { StoredTranscription, TranscribeApiResponse } from '@/lib/types';
 
 export async function POST(request: NextRequest) {
+  const ip = getClientIP(request);
+  const rateCheck = checkRateLimit(ip, 'transcribe-youtube', { maxRequests: 5, windowMs: 60 * 60 * 1000 });
+  if (rateCheck.limited) {
+    return NextResponse.json<TranscribeApiResponse>(
+      { success: false, error: rateCheck.reason },
+      { status: 429 }
+    );
+  }
+
   try {
     const body = await request.json();
     const { title: rawTitle, youtubeUrl: rawUrl, prompt: rawPrompt } = body;
@@ -58,10 +68,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json<TranscribeApiResponse>({ success: true, data: transcription });
   } catch (error) {
     console.error('Erro ao processar YouTube:', error);
-    const message =
-      error instanceof Error ? error.message : 'Erro ao processar o vídeo. Tente novamente.';
     return NextResponse.json<TranscribeApiResponse>(
-      { success: false, error: message },
+      { success: false, error: 'Erro ao processar o video. Tente novamente.' },
       { status: 500 }
     );
   }

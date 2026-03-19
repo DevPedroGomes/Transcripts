@@ -1,11 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { transcribeAudio } from '@/lib/ai/whisper';
+import { transcribeAudio } from '@/lib/ai/deepgram';
 import { processTranscriptionWithAI } from '@/lib/ai/groq';
 import { randomUUID } from 'crypto';
 import { sanitizePrompt, validateTitle, isValidAudioFile, MAX_FILE_SIZE } from '@/lib/validation';
+import { getClientIP, checkRateLimit } from '@/lib/rate-limiter';
 import type { StoredTranscription, TranscribeApiResponse } from '@/lib/types';
 
 export async function POST(request: NextRequest) {
+  const ip = getClientIP(request);
+  const rateCheck = checkRateLimit(ip, 'transcribe-file', { maxRequests: 10, windowMs: 60 * 60 * 1000 });
+  if (rateCheck.limited) {
+    return NextResponse.json<TranscribeApiResponse>(
+      { success: false, error: rateCheck.reason },
+      { status: 429 }
+    );
+  }
+
   try {
     const formData = await request.formData();
     const rawTitle = formData.get('title') as string;

@@ -7,6 +7,10 @@ Sua tarefa é analisar a transcrição fornecida e organizá-la de acordo com o 
 destacando os pontos relevantes e criando um resumo estruturado.`;
 
 export async function processTranscriptionWithAI(rawTranscription: string, prompt: string) {
+  if (!process.env.GROQ_API_KEY) {
+    throw new Error('Servico de IA nao configurado.');
+  }
+
   const userPrompt = prompt
     || 'Faça um resumo estruturado da conversa, destacando pontos importantes e ações a serem tomadas';
 

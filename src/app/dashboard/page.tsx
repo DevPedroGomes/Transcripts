@@ -8,7 +8,8 @@ import { useState, useEffect } from 'react';
 import { Header } from '@/components/layout/Header';
 import { getAllTranscriptions, deleteTranscription } from '@/lib/storage';
 import type { StoredTranscription } from '@/lib/types';
-import { Trash2, FileAudio, Youtube, Mic, Clock, Calendar } from 'lucide-react';
+import { Trash2, Clock, Calendar } from 'lucide-react';
+import { formatDuration, formatDate, getSourceIcon, getSourceLabel } from '@/lib/formatters';
 
 export default function Dashboard() {
   const [activeTab, setActiveTab] = useState('all');
@@ -32,38 +33,6 @@ export default function Dashboard() {
     if (activeTab === 'all') return true;
     return t.source === activeTab;
   });
-
-  const formatDuration = (seconds?: number) => {
-    if (!seconds) return null;
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
-  };
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('pt-BR', {
-      day: '2-digit',
-      month: 'short',
-    });
-  };
-
-  const getSourceIcon = (source: string) => {
-    const icons: Record<string, React.ReactNode> = {
-      file: <FileAudio className="h-4 w-4" />,
-      youtube: <Youtube className="h-4 w-4" />,
-      realtime: <Mic className="h-4 w-4" />,
-    };
-    return icons[source] || null;
-  };
-
-  const getSourceLabel = (source: string) => {
-    const labels: Record<string, string> = {
-      file: 'Arquivo',
-      youtube: 'YouTube',
-      realtime: 'Microfone',
-    };
-    return labels[source] || source;
-  };
 
   const getExcerpt = (text?: string) => {
     if (!text) return 'Sem conteudo disponivel.';

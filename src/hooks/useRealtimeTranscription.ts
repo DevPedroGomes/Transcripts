@@ -22,6 +22,7 @@ export function useRealtimeTranscription() {
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const startTimeRef = useRef<number>(0);
   const finalTextRef = useRef('');
+  const onAutoStopRef = useRef<((transcript: string, durationSeconds: number) => void) | null>(null);
 
   // Keep ref in sync for use in callbacks
   useEffect(() => {
@@ -81,7 +82,6 @@ export function useRealtimeTranscription() {
       wsRef.current = ws;
 
       await new Promise<void>((resolve, reject) => {
-        ws.onopen = () => resolve();
         ws.onerror = () => reject(new Error('Falha ao conectar com o servico de transcricao.'));
         const timeout = setTimeout(() => reject(new Error('Timeout ao conectar.')), 5000);
         ws.onopen = () => {
@@ -151,8 +151,13 @@ export function useRealtimeTranscription() {
         setElapsedSeconds(elapsed);
 
         if (elapsed * 1000 >= REALTIME_MAX_DURATION_MS) {
+          const transcript = finalTextRef.current;
+          const duration = Math.floor((Date.now() - startTimeRef.current) / 1000);
           cleanup();
           setState('idle');
+          if (transcript.trim() && onAutoStopRef.current) {
+            onAutoStopRef.current(transcript, duration);
+          }
         }
       }, 1000);
 
@@ -192,6 +197,10 @@ export function useRealtimeTranscription() {
     setElapsedSeconds(0);
   }, [cleanup]);
 
+  const setOnAutoStop = useCallback((cb: (transcript: string, durationSeconds: number) => void) => {
+    onAutoStopRef.current = cb;
+  }, []);
+
   // Cleanup on unmount
   useEffect(() => {
     return () => cleanup();
@@ -206,5 +215,6 @@ export function useRealtimeTranscription() {
     start,
     stop,
     reset,
+    setOnAutoStop,
   };
 }

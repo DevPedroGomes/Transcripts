@@ -114,6 +114,6 @@ export async function downloadYouTubeAudio(youtubeUrl: string): Promise<Buffer> 
       throw new Error('Este vídeo possui restrição de idade e não pode ser processado.');
     }
 
-    throw new Error(`Falha ao baixar áudio do YouTube: ${message}`);
+    throw new Error('Falha ao baixar audio do YouTube. Verifique o link e tente novamente.');
   }
 }

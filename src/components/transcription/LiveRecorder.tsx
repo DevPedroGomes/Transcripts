@@ -5,14 +5,19 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Mic, Square, RotateCcw } from 'lucide-react';
 import { useRealtimeTranscription } from '@/hooks/useRealtimeTranscription';
 import { REALTIME_MAX_DURATION_MS } from '@/lib/constants';
+import { useEffect } from 'react';
 
 interface LiveRecorderProps {
   onTranscriptionComplete: (transcript: string, durationSeconds: number) => void;
 }
 
 export function LiveRecorder({ onTranscriptionComplete }: LiveRecorderProps) {
-  const { state, error, interimText, finalText, elapsedSeconds, start, stop, reset } =
+  const { state, error, interimText, finalText, elapsedSeconds, start, stop, reset, setOnAutoStop } =
     useRealtimeTranscription();
+
+  useEffect(() => {
+    setOnAutoStop(onTranscriptionComplete);
+  }, [setOnAutoStop, onTranscriptionComplete]);
 
   const maxSeconds = REALTIME_MAX_DURATION_MS / 1000;
 

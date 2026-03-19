@@ -85,12 +85,12 @@ export function YouTubeInput({ onUrlChange, onError, inputId }: YouTubeInputProp
         value={url}
         onChange={handleUrlChange}
         className={
-          error ? 'border-red-500 focus-visible:ring-red-500' : isValid ? 'border-green-500' : ''
+          error ? 'border-destructive focus-visible:ring-destructive' : isValid ? 'border-green-500' : ''
         }
       />
 
       {error && (
-        <div className="flex items-center gap-2 text-red-500 text-sm">
+        <div className="flex items-center gap-2 text-destructive text-sm">
           <AlertCircle className="h-4 w-4" />
           <span>{error}</span>
         </div>
@@ -110,14 +110,14 @@ export function YouTubeInput({ onUrlChange, onError, inputId }: YouTubeInputProp
           </div>
           <div className="p-3">
             <h3 className="font-medium">Video: {videoId}</h3>
-            <p className="text-sm text-gray-500 mt-1">
+            <p className="text-sm text-muted-foreground mt-1">
               Este vídeo será processado para transcrição.
             </p>
           </div>
         </div>
       )}
 
-      <Alert className="bg-blue-50 text-blue-800 border-blue-200">
+      <Alert className="bg-primary/5 text-muted-foreground border-border">
         <AlertDescription>
           A transcrição de vídeos longos pode levar mais tempo. Recomendamos vídeos de até 2 horas.
         </AlertDescription>

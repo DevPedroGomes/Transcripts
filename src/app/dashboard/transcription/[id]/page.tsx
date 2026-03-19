@@ -16,12 +16,10 @@ import {
   RefreshCw,
   Check,
   ArrowLeft,
-  FileAudio,
-  Youtube,
-  Mic,
   Clock,
   Calendar,
 } from 'lucide-react';
+import { formatDuration, formatDate, getSourceIcon, getSourceLabel } from '@/lib/formatters';
 import { Textarea } from '@/components/ui/textarea';
 
 export default function TranscriptionDetails() {
@@ -112,41 +110,6 @@ export default function TranscriptionDetails() {
     } finally {
       setIsReprocessing(false);
     }
-  };
-
-  const formatDuration = (seconds?: number) => {
-    if (!seconds) return null;
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
-  };
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('pt-BR', {
-      day: '2-digit',
-      month: 'long',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  };
-
-  const getSourceLabel = (source: string) => {
-    const labels: Record<string, string> = {
-      file: 'Arquivo de Audio',
-      youtube: 'Video do YouTube',
-      realtime: 'Microfone ao Vivo',
-    };
-    return labels[source] || source;
-  };
-
-  const getSourceIcon = (source: string) => {
-    const icons: Record<string, React.ReactNode> = {
-      file: <FileAudio className="h-4 w-4" />,
-      youtube: <Youtube className="h-4 w-4" />,
-      realtime: <Mic className="h-4 w-4" />,
-    };
-    return icons[source] || null;
   };
 
   const getStatusBadge = (status: string) => {
@@ -242,7 +205,7 @@ export default function TranscriptionDetails() {
               {getStatusBadge(transcription.status)}
               <span className="inline-flex items-center gap-1.5">
                 {getSourceIcon(transcription.source)}
-                {getSourceLabel(transcription.source)}
+                {getSourceLabel(transcription.source, 'long')}
               </span>
               {formatDuration(transcription.duration_seconds) && (
                 <span className="inline-flex items-center gap-1">
@@ -252,7 +215,7 @@ export default function TranscriptionDetails() {
               )}
               <span className="inline-flex items-center gap-1">
                 <Calendar className="h-3.5 w-3.5" />
-                {formatDate(transcription.created_at)}
+                {formatDate(transcription.created_at, 'long')}
               </span>
             </div>
 

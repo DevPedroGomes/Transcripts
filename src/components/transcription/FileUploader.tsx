@@ -81,7 +81,7 @@ export function FileUploader({
           className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
             isDragActive
               ? 'border-primary bg-primary/10'
-              : 'border-gray-300 hover:border-primary/50'
+              : 'border-border hover:border-primary/50'
           }`}
           onClick={() => inputRef.current?.click()}
           onDragOver={(event) => {
@@ -107,13 +107,13 @@ export function FileUploader({
             ref={inputRef}
           />
           <div className="flex flex-col items-center justify-center">
-            <Upload className="h-10 w-10 text-gray-400 mb-4" />
+            <Upload className="h-10 w-10 text-muted-foreground mb-4" />
             <p className="mb-2 text-sm font-semibold">
               {isDragActive
                 ? 'Solte o arquivo aqui'
                 : 'Clique para fazer upload ou arraste e solte'}
             </p>
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-muted-foreground">
               {acceptedFileTypes.join(', ')} (Max. {maxSizeMB}MB)
             </p>
           </div>
@@ -127,7 +127,7 @@ export function FileUploader({
               </div>
               <div className="overflow-hidden">
                 <p className="text-sm font-medium truncate">{file.name}</p>
-                <p className="text-xs text-gray-500">{formatFileSize(file.size)}</p>
+                <p className="text-xs text-muted-foreground">{formatFileSize(file.size)}</p>
               </div>
             </div>
             <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={removeFile}>
@@ -140,7 +140,7 @@ export function FileUploader({
       )}
 
       {error && (
-        <div className="mt-2 flex items-center gap-2 text-red-500 text-sm">
+        <div className="mt-2 flex items-center gap-2 text-destructive text-sm">
           <AlertCircle className="h-4 w-4" />
           <span>{error}</span>
         </div>
