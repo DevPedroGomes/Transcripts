@@ -42,8 +42,16 @@ export async function transcribeAudio(
 
   if (!response.ok) {
     const errorText = await response.text();
+    console.error(`Deepgram API error: ${response.status} ${response.statusText} - ${errorText}`);
+
+    if (response.status === 402 || response.status === 403) {
+      throw new Error(
+        'Servico de transcricao indisponivel no momento. Tente novamente mais tarde.'
+      );
+    }
+
     throw new Error(
-      `Erro na API Deepgram: ${response.status} ${response.statusText} - ${errorText}`
+      'Servico de transcricao indisponivel no momento. Tente novamente mais tarde.'
     );
   }
 

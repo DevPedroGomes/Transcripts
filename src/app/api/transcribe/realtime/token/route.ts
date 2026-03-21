@@ -3,7 +3,7 @@ import { REALTIME_COOLDOWN_MS } from '@/lib/constants';
 
 // In-memory rate limiting (acceptable for single-instance showcase)
 const sessions = new Map<string, { activeAt: number }>();
-const MAX_CONCURRENT = 1;
+const MAX_CONCURRENT = 5;
 const KEY_TTL_SECONDS = 10;
 
 function getClientIP(request: NextRequest): string {
