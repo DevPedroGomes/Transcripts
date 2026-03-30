@@ -10,23 +10,31 @@ import { getAllTranscriptions, deleteTranscription } from '@/lib/storage';
 import type { StoredTranscription } from '@/lib/types';
 import { Trash2, Clock, Calendar } from 'lucide-react';
 import { formatDuration, formatDate, getSourceIcon, getSourceLabel } from '@/lib/formatters';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 
 export default function Dashboard() {
   const [activeTab, setActiveTab] = useState('all');
   const [transcriptions, setTranscriptions] = useState<StoredTranscription[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
 
   useEffect(() => {
     setTranscriptions(getAllTranscriptions());
     setIsLoading(false);
   }, []);
 
-  const handleDelete = (id: string, e: React.MouseEvent) => {
+  const handleDeleteClick = (id: string, e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    if (!confirm('Tem certeza que deseja excluir esta transcricao?')) return;
-    deleteTranscription(id);
-    setTranscriptions(getAllTranscriptions());
+    setDeleteTarget(id);
+  };
+
+  const handleDeleteConfirm = () => {
+    if (deleteTarget) {
+      deleteTranscription(deleteTarget);
+      setTranscriptions(getAllTranscriptions());
+    }
+    setDeleteTarget(null);
   };
 
   const filteredTranscriptions = transcriptions.filter((t) => {
@@ -50,11 +58,11 @@ export default function Dashboard() {
   return (
     <div className="flex min-h-screen flex-col">
       <Header showNewButton />
-      <main className="flex-1">
-        <div className="container py-8">
+      <main className="flex-1 bg-[#fafafa]">
+        <div className="max-w-6xl mx-auto px-6 sm:px-8 py-8">
           <div className="mb-8">
-            <h1 className="text-2xl font-bold tracking-tight">Suas Transcricoes</h1>
-            <p className="mt-1 text-sm text-muted-foreground">
+            <h1 className="text-2xl font-semibold tracking-tight text-neutral-900">Suas Transcricoes</h1>
+            <p className="mt-1 text-sm text-neutral-500">
               {transcriptions.length} transcricao{transcriptions.length !== 1 ? 'es' : ''} salva{transcriptions.length !== 1 ? 's' : ''}
             </p>
           </div>
@@ -69,8 +77,8 @@ export default function Dashboard() {
 
             <TabsContent value={activeTab} className="mt-0">
               {filteredTranscriptions.length === 0 ? (
-                <div className="flex flex-col items-center justify-center rounded-xl border border-dashed py-16">
-                  <p className="mb-4 text-muted-foreground">
+                <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-neutral-300 py-16 bg-white">
+                  <p className="mb-4 text-neutral-500">
                     {activeTab === 'all'
                       ? 'Nenhuma transcricao ainda.'
                       : `Nenhuma transcricao do tipo ${getSourceLabel(activeTab)}.`}
@@ -83,26 +91,26 @@ export default function Dashboard() {
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                   {filteredTranscriptions.map((t) => (
                     <Link key={t.id} href={`/dashboard/transcription/${t.id}`}>
-                      <Card className="group h-full overflow-hidden transition-all hover:border-primary/40 hover:shadow-sm">
+                      <Card className="group h-full overflow-hidden bg-white border-neutral-200 rounded-2xl card-shadow hover-lift">
                         <CardHeader className="flex flex-row items-start justify-between gap-2 space-y-0 pb-3">
                           <div className="min-w-0 flex-1">
-                            <CardTitle className="truncate text-base font-medium">
+                            <CardTitle className="truncate text-base font-medium text-neutral-900">
                               {t.title}
                             </CardTitle>
                           </div>
                           <button
-                            onClick={(e) => handleDelete(t.id, e)}
-                            className="shrink-0 rounded-md p-1.5 text-muted-foreground opacity-0 transition-all hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100"
+                            onClick={(e) => handleDeleteClick(t.id, e)}
+                            className="shrink-0 rounded-md p-1.5 text-neutral-400 opacity-0 transition-all hover:bg-red-50 hover:text-red-500 group-hover:opacity-100"
                             title="Excluir"
                           >
                             <Trash2 className="h-3.5 w-3.5" />
                           </button>
                         </CardHeader>
                         <CardContent className="space-y-3">
-                          <p className="line-clamp-2 text-sm text-muted-foreground">
+                          <p className="line-clamp-2 text-sm text-neutral-500">
                             {getExcerpt(t.transcript_raw)}
                           </p>
-                          <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                          <div className="flex items-center gap-3 text-xs text-neutral-400">
                             <span className="inline-flex items-center gap-1">
                               {getSourceIcon(t.source)}
                               {getSourceLabel(t.source)}
@@ -128,6 +136,14 @@ export default function Dashboard() {
           </Tabs>
         </div>
       </main>
+
+      <ConfirmDialog
+        open={deleteTarget !== null}
+        title="Excluir transcricao"
+        description="Tem certeza que deseja excluir esta transcricao? Esta acao nao pode ser desfeita."
+        onConfirm={handleDeleteConfirm}
+        onCancel={() => setDeleteTarget(null)}
+      />
     </div>
   );
 }

@@ -21,6 +21,7 @@ export type TranscribeApiResponse = {
   success: boolean;
   error?: string;
   data?: StoredTranscription;
+  ai_skipped?: boolean;
 };
 
 export type TranscriptionSegment = {

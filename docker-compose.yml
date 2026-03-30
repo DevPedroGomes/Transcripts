@@ -3,6 +3,10 @@ services:
     build: .
     container_name: transcripts-app
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512m
     environment:
       DEEPGRAM_API_KEY: ${DEEPGRAM_API_KEY}
       DEEPGRAM_PROJECT_ID: ${DEEPGRAM_PROJECT_ID}

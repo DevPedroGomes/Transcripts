@@ -3,7 +3,6 @@
 import { useCallback, useRef, useState } from 'react';
 import { Upload, X, AlertCircle, Music } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress';
 
 interface FileUploaderProps {
   onFileChange: (file: File | null) => void;
@@ -135,7 +134,7 @@ export function FileUploader({
               <span className="sr-only">Remover arquivo</span>
             </Button>
           </div>
-          <Progress value={100} className="h-1" />
+          <p className="text-xs text-muted-foreground mt-1">Pronto para enviar</p>
         </div>
       )}
 

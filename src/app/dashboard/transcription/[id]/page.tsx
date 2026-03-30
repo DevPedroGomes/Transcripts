@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { formatDuration, formatDate, getSourceIcon, getSourceLabel } from '@/lib/formatters';
 import { Textarea } from '@/components/ui/textarea';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 
 export default function TranscriptionDetails() {
   const params = useParams<{ id: string }>();
@@ -29,6 +30,7 @@ export default function TranscriptionDetails() {
   const [transcription, setTranscription] = useState<StoredTranscription | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [copied, setCopied] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   // Reprocess state
   const [showReprocess, setShowReprocess] = useState(false);
@@ -46,7 +48,6 @@ export default function TranscriptionDetails() {
   }, [params.id]);
 
   const handleDelete = () => {
-    if (!confirm('Tem certeza que deseja excluir esta transcricao?')) return;
     deleteTranscription(params.id);
     router.push('/dashboard');
   };
@@ -191,7 +192,7 @@ export default function TranscriptionDetails() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={handleDelete}
+                  onClick={() => setShowDeleteDialog(true)}
                   className="text-destructive hover:text-destructive hover:bg-destructive/10"
                   title="Excluir"
                 >
@@ -341,6 +342,14 @@ export default function TranscriptionDetails() {
           )}
         </div>
       </main>
+
+      <ConfirmDialog
+        open={showDeleteDialog}
+        title="Excluir transcricao"
+        description="Tem certeza que deseja excluir esta transcricao? Esta acao nao pode ser desfeita."
+        onConfirm={handleDelete}
+        onCancel={() => setShowDeleteDialog(false)}
+      />
     </div>
   );
 }

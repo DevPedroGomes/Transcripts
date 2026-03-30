@@ -32,9 +32,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const result = await processTranscriptionWithAI(transcriptRaw, prompt);
+    const aiResult = await processTranscriptionWithAI(transcriptRaw, prompt);
 
-    return NextResponse.json({ success: true, data: { transcript_processed: result } });
+    if (!aiResult.aiProcessed) {
+      return NextResponse.json(
+        { success: false, error: 'Falha ao processar com IA. Verifique se a chave da API esta configurada e tente novamente.' },
+        { status: 502 }
+      );
+    }
+
+    return NextResponse.json({ success: true, data: { transcript_processed: aiResult.text } });
   } catch (error) {
     console.error('Erro ao reprocessar:', error);
     return NextResponse.json(

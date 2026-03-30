@@ -26,11 +26,11 @@ const features = [
 
 export default function Home() {
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="flex min-h-screen flex-col bg-[#fafafa]">
       <Header
         rightContent={
           <Link href="/dashboard">
-            <Button variant="outline" size="sm">
+            <Button variant="outline" size="sm" className="border-neutral-200 text-neutral-900 hover:bg-neutral-50">
               Dashboard
             </Button>
           </Link>
@@ -40,22 +40,22 @@ export default function Home() {
       <main className="flex-1">
         {/* Hero */}
         <section className="py-20 md:py-32">
-          <div className="container flex flex-col items-center text-center">
-            <h1 className="max-w-3xl text-4xl font-bold tracking-tight sm:text-5xl md:text-6xl">
+          <div className="max-w-6xl mx-auto px-6 sm:px-8 flex flex-col items-center text-center">
+            <h1 className="max-w-3xl text-4xl font-semibold tracking-tighter sm:text-5xl md:text-6xl leading-[0.95] text-neutral-900">
               Transforme Audio em Texto com IA
             </h1>
-            <p className="mt-6 max-w-2xl text-lg text-muted-foreground">
+            <p className="mt-6 max-w-2xl text-lg text-neutral-500 leading-relaxed">
               Transcreva reunioes, aulas, entrevistas e qualquer conteudo de audio com precisao.
               Upload de arquivos, links do YouTube ou gravacao ao vivo.
             </p>
             <div className="mt-10 flex gap-4">
               <Link href="/dashboard/new">
-                <Button size="lg" className="gap-2">
+                <Button size="lg" className="gap-2 rounded-full px-8">
                   Comecar <ArrowRight className="h-4 w-4" />
                 </Button>
               </Link>
               <Link href="/dashboard">
-                <Button size="lg" variant="outline">
+                <Button size="lg" variant="outline" className="border-neutral-200 text-neutral-900 hover:bg-white rounded-full px-8">
                   Ver Dashboard
                 </Button>
               </Link>
@@ -64,9 +64,9 @@ export default function Home() {
         </section>
 
         {/* Features */}
-        <section className="border-t bg-muted/30 py-20">
-          <div className="container">
-            <h2 className="mb-12 text-center text-2xl font-semibold tracking-tight">
+        <section className="border-t border-neutral-200 bg-white py-20">
+          <div className="max-w-6xl mx-auto px-6 sm:px-8">
+            <h2 className="mb-12 text-center text-2xl font-semibold tracking-tight text-neutral-900">
               Tres formas de transcrever
             </h2>
             <div className="mx-auto grid max-w-4xl gap-6 md:grid-cols-3">
@@ -74,13 +74,13 @@ export default function Home() {
                 <Link
                   key={f.title}
                   href={f.href}
-                  className="group rounded-xl border bg-card p-6 transition-all hover:border-primary/50 hover:shadow-md"
+                  className="group bg-white border border-neutral-200 rounded-2xl p-6 hover-lift card-shadow"
                 >
-                  <div className="mb-4 inline-flex rounded-lg bg-primary/10 p-3">
-                    <f.icon className="h-6 w-6 text-primary" />
+                  <div className="mb-4 inline-flex rounded-xl bg-orange-50 p-3">
+                    <f.icon className="h-6 w-6 text-orange-500" />
                   </div>
-                  <h3 className="mb-2 font-semibold">{f.title}</h3>
-                  <p className="text-sm leading-relaxed text-muted-foreground">{f.description}</p>
+                  <h3 className="mb-2 font-semibold text-neutral-900">{f.title}</h3>
+                  <p className="text-sm leading-relaxed text-neutral-500">{f.description}</p>
                 </Link>
               ))}
             </div>
@@ -88,9 +88,9 @@ export default function Home() {
         </section>
 
         {/* Tech stack */}
-        <section className="border-t py-16">
-          <div className="container text-center">
-            <p className="text-sm text-muted-foreground">
+        <section className="border-t border-neutral-200 py-16">
+          <div className="max-w-6xl mx-auto px-6 sm:px-8 text-center">
+            <p className="text-sm text-neutral-400 font-mono tracking-wide">
               Deepgram Nova-3 &middot; Groq Llama 3.3 &middot; Next.js 16 &middot; React 19
               &middot; Tailwind CSS 4
             </p>
@@ -98,9 +98,9 @@ export default function Home() {
         </section>
       </main>
 
-      <footer className="border-t py-6">
-        <div className="container text-center">
-          <p className="text-sm text-muted-foreground">
+      <footer className="border-t border-neutral-200 py-6 bg-white">
+        <div className="max-w-6xl mx-auto px-6 sm:px-8 text-center">
+          <p className="text-sm text-neutral-400">
             &copy; {new Date().getFullYear()} MeetingsTranscript
           </p>
         </div>

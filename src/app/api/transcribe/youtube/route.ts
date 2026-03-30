@@ -46,8 +46,13 @@ export async function POST(request: NextRequest) {
 
     // Optional AI processing
     let transcriptProcessed: string | undefined;
+    let aiSkipped = false;
     if (prompt) {
-      transcriptProcessed = await processTranscriptionWithAI(transcriptRaw, prompt);
+      const aiResult = await processTranscriptionWithAI(transcriptRaw, prompt);
+      transcriptProcessed = aiResult.text;
+      if (!aiResult.aiProcessed) {
+        aiSkipped = true;
+      }
     }
 
     const now = new Date().toISOString();
@@ -65,7 +70,7 @@ export async function POST(request: NextRequest) {
       updated_at: now,
     };
 
-    return NextResponse.json<TranscribeApiResponse>({ success: true, data: transcription });
+    return NextResponse.json<TranscribeApiResponse>({ success: true, data: transcription, ai_skipped: aiSkipped || undefined });
   } catch (error) {
     console.error('Erro ao processar YouTube:', error);
     return NextResponse.json<TranscribeApiResponse>(

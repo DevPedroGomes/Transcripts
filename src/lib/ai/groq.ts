@@ -13,10 +13,15 @@ const SYSTEM_PROMPT = `Você é um assistente especializado em processar transcr
 Sua tarefa é analisar a transcrição fornecida e organizá-la de acordo com o prompt do usuário,
 destacando os pontos relevantes e criando um resumo estruturado.`;
 
-export async function processTranscriptionWithAI(rawTranscription: string, prompt: string) {
+export type AIProcessingResult = {
+  text: string;
+  aiProcessed: boolean;
+};
+
+export async function processTranscriptionWithAI(rawTranscription: string, prompt: string): Promise<AIProcessingResult> {
   if (!process.env.GROQ_API_KEY) {
     console.warn('GROQ_API_KEY not configured, returning raw transcript');
-    return rawTranscription;
+    return { text: rawTranscription, aiProcessed: false };
   }
 
   const userPrompt = prompt
@@ -32,9 +37,10 @@ export async function processTranscriptionWithAI(rawTranscription: string, promp
       ],
     });
 
-    return response.choices[0]?.message?.content ?? '';
+    const result = response.choices[0]?.message?.content ?? '';
+    return { text: result, aiProcessed: true };
   } catch (error) {
     console.error('Groq AI processing failed, returning raw transcript:', error);
-    return rawTranscription;
+    return { text: rawTranscription, aiProcessed: false };
   }
 }
