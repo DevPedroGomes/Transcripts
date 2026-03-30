@@ -7,9 +7,10 @@ const MAX_CONCURRENT = 5;
 const KEY_TTL_SECONDS = 10;
 
 function getClientIP(request: NextRequest): string {
+  // Only trust x-real-ip set by Traefik reverse proxy
   return (
-    request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
     request.headers.get('x-real-ip') ||
+    request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
     'unknown'
   );
 }
@@ -69,7 +70,7 @@ export async function POST(request: NextRequest) {
         },
         body: JSON.stringify({
           comment: `Realtime showcase session - ${ip}`,
-          scopes: ['usage:write'],
+          scopes: ['usage:read'],
           time_to_live_in_seconds: KEY_TTL_SECONDS,
         }),
       }

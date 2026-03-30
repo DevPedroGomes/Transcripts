@@ -3,9 +3,12 @@ import { NextRequest } from 'next/server';
 const stores = new Map<string, Map<string, number[]>>();
 
 export function getClientIP(request: NextRequest): string {
+  // Only trust x-real-ip set by Traefik (not user-spoofable).
+  // x-forwarded-for is a fallback but take the FIRST entry (client IP),
+  // not the last, since Traefik appends the real client IP at the start.
   return (
     request.headers.get('x-real-ip') ||
-    request.headers.get('x-forwarded-for')?.split(',').pop()?.trim() ||
+    request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
     'unknown'
   );
 }
