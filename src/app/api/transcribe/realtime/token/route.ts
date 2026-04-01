@@ -70,7 +70,7 @@ export async function POST(request: NextRequest) {
         },
         body: JSON.stringify({
           comment: `Realtime showcase session - ${ip}`,
-          scopes: ['usage:read'],
+          scopes: ['usage:write'],
           time_to_live_in_seconds: KEY_TTL_SECONDS,
         }),
       }
