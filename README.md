@@ -1,143 +1,111 @@
-# MeetingsTranscript
+# Meetings Transcript
 
-Audio and video transcription application powered by AI. Upload audio files or paste a YouTube URL to get accurate transcriptions with optional AI-powered processing using custom prompts.
+Audio and video transcription application powered by AI. Supports file uploads, YouTube URLs, and realtime microphone recording with speech-to-text via Deepgram Nova-3 and optional AI processing through Groq Llama 3.3 70B.
 
 Built as a self-contained showcase application with no external database -- all data is stored client-side in localStorage.
 
 ## Architecture
 
+Next.js API routes handle all audio processing server-side: receiving uploads, downloading YouTube audio, creating temporary Deepgram keys for realtime sessions, and calling the Groq LLM for AI processing. The client stores all transcription results in localStorage and manages the realtime microphone WebSocket connection directly with Deepgram.
+
+```
+Browser (Client)                         Server (API Routes)                    External Services
+-------------------                      -------------------                    ------------------
+Landing Page                             POST /api/transcribe/file              Deepgram Nova-3 (STT)
+Dashboard (list)                         POST /api/transcribe/youtube           Groq Llama 3.3 70B (LLM)
+New Transcription Form                   POST /api/reprocess                    YouTube (audio download)
+Transcription Detail                     POST /api/transcribe/realtime/token
+localStorage (persistence)
+```
+
+The realtime path is different from file and YouTube: the browser opens a WebSocket directly to Deepgram using a short-lived temporary API key issued by the server. Audio chunks from the microphone are streamed over this WebSocket, and transcript fragments are received back in real time.
+
+## Pipeline
+
 ```mermaid
-flowchart TB
-    subgraph Client["Browser (Client-Side)"]
-        LP[Landing Page]
-        DASH[Dashboard]
-        NEW[New Transcription Form]
-        DETAIL[Transcription Detail View]
-        LS[(localStorage)]
+flowchart TD
+    subgraph Input
+        F[File Upload]
+        Y[YouTube URL]
+        M[Realtime Microphone]
     end
 
-    subgraph Server["Next.js API Routes (Server-Side)"]
-        API_FILE["/api/transcribe/file"]
-        API_YT["/api/transcribe/youtube"]
-        API_RE["/api/reprocess"]
+    subgraph Server["Next.js API Routes"]
+        FA["/api/transcribe/file"]
+        YA["/api/transcribe/youtube"]
+        DL[Download YouTube Audio]
+        TK["/api/transcribe/realtime/token"]
+        RE["/api/reprocess"]
     end
 
     subgraph External["External Services"]
-        DG[Deepgram Nova-2 API]
-        OAI[OpenAI GPT-4o-mini]
-        YT[YouTube]
+        DG["Deepgram Nova-3 (REST)"]
+        DGW["Deepgram Nova-3 (WebSocket)"]
+        GQ["Groq Llama 3.3 70B"]
     end
 
-    LP -->|navigate| DASH
-    DASH -->|create| NEW
-    DASH -->|view| DETAIL
+    subgraph Client["Browser"]
+        WS[WebSocket Connection]
+        LS[(localStorage)]
+    end
 
-    NEW -->|upload audio file| API_FILE
-    NEW -->|paste YouTube URL| API_YT
-    DETAIL -->|reprocess with new prompt| API_RE
+    F -->|audio buffer| FA
+    Y -->|URL| YA
+    YA --> DL -->|audio buffer| DG
+    FA -->|audio buffer| DG
 
-    API_FILE -->|send audio buffer| DG
-    API_YT -->|download audio| YT
-    API_YT -->|send audio buffer| DG
-    API_FILE -->|optional processing| OAI
-    API_YT -->|optional processing| OAI
-    API_RE -->|process raw transcript| OAI
+    DG -->|raw transcript| FA
+    DG -->|raw transcript| YA
 
-    DG -->|raw transcript| API_FILE
-    DG -->|raw transcript| API_YT
-    OAI -->|processed transcript| API_FILE
-    OAI -->|processed transcript| API_YT
-    OAI -->|processed transcript| API_RE
+    FA -->|optional prompt| GQ
+    YA -->|optional prompt| GQ
+    RE -->|raw transcript + prompt| GQ
+    GQ -->|processed text| FA
+    GQ -->|processed text| YA
+    GQ -->|processed text| RE
 
-    API_FILE -->|transcription JSON| LS
-    API_YT -->|transcription JSON| LS
-    API_RE -->|updated transcript| LS
-    LS -->|read| DASH
-    LS -->|read| DETAIL
+    FA -->|transcription JSON| LS
+    YA -->|transcription JSON| LS
+    RE -->|updated transcript| LS
+
+    M --> TK -->|temporary key| WS
+    WS -->|audio chunks| DGW
+    DGW -->|transcript fragments| WS
+    WS -->|final transcript| LS
 ```
-
-## How the AI Pipeline Works
-
-The application uses a two-stage AI pipeline to transform audio into structured, actionable text.
 
 ### Stage 1: Speech-to-Text (Deepgram)
 
-Audio is sent to the Deepgram Nova-2 model configured for Brazilian Portuguese (`pt-BR`). The API returns a raw transcript with word-level timestamps, speaker diarization, smart formatting, and punctuation. For YouTube videos, the audio is first extracted from the video stream using `ytdl-core` and buffered in memory before being sent to Deepgram.
+Audio is sent to the Deepgram Nova-3 model. For file uploads and YouTube, this is a single REST POST with the full audio buffer. For realtime, the browser streams audio chunks over a WebSocket using a temporary API key (10-second TTL) created by the server. The API returns raw transcript text with word-level timestamps, speaker diarization, smart formatting, and punctuation.
 
-Configuration: `model=nova-2`, `language=pt-BR`, `smart_format=true`, `punctuate=true`, `diarize=true`.
+File/YouTube configuration: `model=nova-2, language=pt-BR, smart_format=true, punctuate=true, diarize=true`.
+Realtime configuration: `model=nova-3, language=pt-BR, smart_format=true, punctuate=true, interim_results=true, endpointing=300, vad_events=true`.
 
-### Stage 2: LLM Processing (OpenAI via LangChain)
+### Stage 2: LLM Processing (Groq)
 
-This stage is optional and triggered only when the user provides a custom prompt (e.g., "extract action items", "summarize key decisions", "list topics discussed"). The raw transcript is fed into a LangChain `RunnableSequence` chain composed of:
+This stage is optional and triggered only when the user provides a custom prompt (e.g., "extract action items", "summarize key decisions", "list topics discussed"). The raw transcript is sent to Groq's Llama 3.3 70B model with `temperature=0.5`. A system prompt instructs the model to analyze and organize the transcription content according to the user's instructions. Users can reprocess any completed transcription with a different prompt at any time without re-transcribing the audio.
 
-1. **PromptTemplate** -- injects the raw transcript and user instructions into a system prompt that guides the model to analyze and organize the content.
-2. **ChatOpenAI** -- calls GPT-4o-mini with `temperature=0.5` for a balance between creativity and consistency.
-3. **StringOutputParser** -- extracts the plain-text result from the model response.
+## Input Methods
 
-Users can reprocess any completed transcription with a different prompt at any time without re-transcribing the audio.
+**File Upload** -- Drag-and-drop or browse for audio files. Supports MP3, WAV, M4A, OGG, FLAC, WebM, and AAC formats up to 50MB. The file is sent as a buffer to Deepgram's REST API for batch transcription.
+
+**YouTube URL** -- Paste any public YouTube video URL. The server downloads the audio track using `@distube/ytdl-core` (capped at 200MB / approximately 2 hours), buffers it in memory, and sends it to Deepgram for transcription.
+
+**Realtime Microphone** -- Record directly from the browser microphone with live transcription. The server issues a short-lived Deepgram API key (10-second TTL) so the browser can open a WebSocket connection directly to Deepgram. Audio is captured via MediaRecorder and streamed in 250ms chunks. Interim and final transcript results appear in real time. Sessions are capped at 3 minutes with a 30-second cooldown between sessions and a maximum of 5 concurrent sessions globally.
 
 ## Tech Stack
 
-| Layer | Technology |
-|-------|-----------|
-| Framework | Next.js 16 (App Router, Turbopack) |
-| UI | React 19, Tailwind CSS 4, Radix UI, Shadcn UI |
-| Language | TypeScript 5.7 |
-| Speech-to-Text | Deepgram Nova-2 API |
-| LLM Processing | LangChain + OpenAI GPT-4o-mini |
-| YouTube Audio | @distube/ytdl-core |
-| Storage | Browser localStorage (client-side) |
-| Theming | next-themes (system/dark/light) |
-| Testing | Jest + React Testing Library |
-| Deployment | Docker (Node.js 20 Alpine, standalone build) + Traefik reverse proxy |
-
-## Project Structure
-
-```
-src/
-├── app/
-│   ├── api/
-│   │   ├── transcribe/
-│   │   │   ├── file/route.ts        # Audio file upload endpoint
-│   │   │   └── youtube/route.ts     # YouTube URL endpoint
-│   │   └── reprocess/route.ts       # Reprocess with new prompt
-│   ├── dashboard/
-│   │   ├── page.tsx                 # List all transcriptions
-│   │   ├── new/page.tsx             # New transcription form
-│   │   └── transcription/[id]/
-│   │       └── page.tsx             # Transcription detail view
-│   ├── layout.tsx                   # Root layout with theme provider
-│   ├── page.tsx                     # Landing page
-│   └── globals.css
-├── components/
-│   ├── layout/
-│   │   └── Header.tsx               # Sticky navigation header
-│   ├── transcription/
-│   │   ├── FileUploader.tsx         # Drag-and-drop file upload
-│   │   └── YouTubeInput.tsx         # YouTube URL input with preview
-│   └── ui/                          # Shadcn UI primitives
-├── lib/
-│   ├── ai/
-│   │   ├── whisper.ts               # Deepgram transcription + YouTube download
-│   │   └── openai.ts                # LangChain + OpenAI processing
-│   ├── storage.ts                   # localStorage CRUD wrapper
-│   ├── validation.ts                # Input validation and sanitization
-│   ├── types.ts                     # TypeScript type definitions
-│   ├── constants.ts                 # API config and limits
-│   └── utils.ts                     # CSS class utilities
-└── __tests__/
-    └── smoke.test.tsx               # Basic smoke tests
-```
-
-## Features
-
-- **Audio file transcription** -- supports MP3, WAV, M4A, OGG, FLAC, WebM, AAC (up to 50MB)
-- **YouTube video transcription** -- paste any public YouTube URL (up to ~2 hours)
-- **Custom AI processing** -- provide a prompt to summarize, extract action items, highlight topics, or anything else
-- **Reprocessing** -- reprocess any transcription with a different prompt without re-transcribing
-- **Export** -- download transcriptions as TXT or copy to clipboard
-- **Dark mode** -- follows system preference via next-themes
-- **Responsive design** -- works on desktop, tablet, and mobile
+| Component | Technology | Role |
+|-----------|-----------|------|
+| Framework | Next.js 16 (App Router, Turbopack) | Server-side API routes and static rendering |
+| UI | React 19, Tailwind CSS 4, Radix UI, Shadcn UI | Component library and styling |
+| Language | TypeScript 5.7 | Type safety across client and server |
+| Speech-to-Text | Deepgram Nova-3 API | Audio transcription (REST and WebSocket) |
+| LLM Processing | Groq Llama 3.3 70B | Optional AI summarization and analysis |
+| YouTube Audio | @distube/ytdl-core | Download audio from YouTube videos |
+| Storage | Browser localStorage | Client-side transcription persistence |
+| Theming | next-themes | System, dark, and light mode support |
+| Deployment | Docker (Node.js 20 Alpine) + Traefik | Containerized with automatic HTTPS |
 
 ## Getting Started
 
@@ -145,45 +113,40 @@ src/
 
 - Node.js 20+
 - A [Deepgram](https://deepgram.com) API key (free tier available)
-- An [OpenAI](https://platform.openai.com) API key
+- A Deepgram Project ID (required for realtime temporary key generation)
+- A [Groq](https://console.groq.com) API key (free tier available)
 
-### Setup
+### Environment Variables
+
+Create a `.env` file in the project root:
+
+```
+DEEPGRAM_API_KEY=your_deepgram_api_key
+DEEPGRAM_PROJECT_ID=your_deepgram_project_id
+GROQ_API_KEY=your_groq_api_key
+```
+
+`DEEPGRAM_API_KEY` -- Used for file and YouTube transcription (REST API) and for creating temporary keys for realtime sessions.
+
+`DEEPGRAM_PROJECT_ID` -- Required by the Deepgram key management API to issue short-lived keys for realtime WebSocket connections.
+
+`GROQ_API_KEY` -- Used for optional AI processing of transcripts. If not set, AI processing is skipped and raw transcripts are returned.
+
+### Running Locally
 
 ```bash
-# Install dependencies
 npm install
-
-# Configure environment variables
-cp .env.example .env
-# Edit .env and add your API keys:
-#   DEEPGRAM_API_KEY=your-deepgram-key
-#   OPENAI_API_KEY=your-openai-key
-
-# Start development server
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000).
+Open http://localhost:3000.
 
-### Scripts
-
-| Command | Description |
-|---------|-------------|
-| `npm run dev` | Start Next.js dev server with Turbopack |
-| `npm run build` | Production build |
-| `npm run start` | Start production server |
-| `npm run lint` | Run ESLint |
-| `npm run format` | Format code with Prettier |
-| `npm test` | Run Jest tests |
-
-## Docker Deployment
-
-The application ships with a multi-stage Dockerfile and a Docker Compose file preconfigured for Traefik reverse proxy with automatic HTTPS via Let's Encrypt.
+### Running with Docker
 
 ```bash
 # Set your API keys in .env
-echo "DEEPGRAM_API_KEY=your-key" >> .env
-echo "OPENAI_API_KEY=your-key" >> .env
+cp .env.example .env
+# Edit .env with your keys
 
 # Build and start
 docker compose up -d
@@ -192,14 +155,15 @@ docker compose up -d
 docker compose logs -f
 ```
 
-The container runs as a non-root user, uses the Next.js standalone output for minimal image size, and includes a health check on port 3000.
+The container runs as a non-root user, uses the Next.js standalone output for minimal image size, and includes a health check on port 3000. The Docker Compose file is preconfigured for Traefik reverse proxy with automatic HTTPS via Let's Encrypt.
 
-## Security
+## Rate Limits
 
-- Input validation and sanitization on all API routes
-- Prompt injection prevention (strips known injection patterns, code blocks, system markers)
-- YouTube URL validation with strict domain and video ID parsing
-- Audio file type and size restrictions
-- HSTS, X-Frame-Options, X-Content-Type-Options, and Referrer-Policy headers via Traefik
-- YouTube audio download capped at 200MB to prevent memory exhaustion
-- Client-side request timeouts (5 min for files, 10 min for YouTube)
+All rate limits are per-IP and enforced in-memory (appropriate for a single-instance showcase).
+
+| Endpoint | Limit | Window |
+|----------|-------|--------|
+| `POST /api/transcribe/file` | 10 requests | 1 hour |
+| `POST /api/transcribe/youtube` | 5 requests | 1 hour |
+| `POST /api/reprocess` | 15 requests | 1 hour |
+| `POST /api/transcribe/realtime/token` | 5 concurrent sessions globally, 30s cooldown per IP | Rolling |
