@@ -22,6 +22,12 @@ WORKDIR /app
 
 ENV NODE_ENV=production
 
+# Install yt-dlp + ffmpeg for YouTube audio extraction
+# Node.js is already available as JS runtime for yt-dlp
+RUN apk add --no-cache python3 py3-pip ffmpeg \
+    && pip3 install --no-cache-dir --break-system-packages yt-dlp \
+    && rm -rf /root/.cache
+
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 

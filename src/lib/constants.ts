@@ -9,7 +9,7 @@ export const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
 export const DEEPGRAM_WS_URL = 'wss://api.deepgram.com/v1/listen';
 
 export const DEEPGRAM_REALTIME_PARAMS =
-  'model=nova-3&language=pt-BR&smart_format=true&punctuate=true&interim_results=true&endpointing=300&vad_events=true';
+  'model=nova-3&language=pt-BR&smart_format=true&punctuate=true&interim_results=true&endpointing=200&vad_events=true&encoding=opus&sample_rate=48000';
 
 export const REALTIME_MAX_DURATION_MS = 3 * 60 * 1000; // 3 minutes
 

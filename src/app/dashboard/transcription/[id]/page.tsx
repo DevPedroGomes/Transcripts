@@ -19,13 +19,15 @@ import {
   Clock,
   Calendar,
 } from 'lucide-react';
-import { formatDuration, formatDate, getSourceIcon, getSourceLabel } from '@/lib/formatters';
+import { formatDuration, formatDate, getSourceIcon } from '@/lib/formatters';
 import { Textarea } from '@/components/ui/textarea';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { useLocale } from '@/hooks/use-locale';
 
 export default function TranscriptionDetails() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
+  const { locale, toggleLocale, t } = useLocale();
   const [activeTab, setActiveTab] = useState('raw');
   const [transcription, setTranscription] = useState<StoredTranscription | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -39,9 +41,9 @@ export default function TranscriptionDetails() {
   const [reprocessError, setReprocessError] = useState<string | null>(null);
 
   useEffect(() => {
-    const t = getTranscriptionById(params.id);
-    setTranscription(t);
-    if (t?.transcript_processed?.trim()) {
+    const data = getTranscriptionById(params.id);
+    setTranscription(data);
+    if (data?.transcript_processed?.trim()) {
       setActiveTab('transcript');
     }
     setIsLoading(false);
@@ -91,7 +93,7 @@ export default function TranscriptionDetails() {
       const payload = await response.json();
 
       if (!response.ok || !payload.success) {
-        throw new Error(payload.error || 'Falha ao reprocessar.');
+        throw new Error(payload.error || t('detail.reprocess.error'));
       }
 
       const updated = updateTranscription(params.id, {
@@ -107,10 +109,15 @@ export default function TranscriptionDetails() {
       setReprocessPrompt('');
       setActiveTab('transcript');
     } catch (error) {
-      setReprocessError(error instanceof Error ? error.message : 'Erro ao reprocessar.');
+      setReprocessError(error instanceof Error ? error.message : t('detail.reprocess.error'));
     } finally {
       setIsReprocessing(false);
     }
+  };
+
+  const getSourceLabel = (source: string): string => {
+    const key = `detail.source.${source}` as Parameters<typeof t>[0];
+    return t(key);
   };
 
   const getStatusBadge = (status: string) => {
@@ -118,15 +125,12 @@ export default function TranscriptionDetails() {
       completed: 'bg-emerald-500/10 text-emerald-600 ring-emerald-500/20',
       failed: 'bg-destructive/10 text-destructive ring-destructive/20',
     };
-    const labels: Record<string, string> = {
-      completed: 'Completada',
-      failed: 'Falhou',
-    };
+    const statusKey = `detail.status.${status}` as Parameters<typeof t>[0];
     return (
       <span
         className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset ${styles[status] || 'bg-muted text-muted-foreground ring-border'}`}
       >
-        {labels[status] || status}
+        {t(statusKey)}
       </span>
     );
   };
@@ -142,12 +146,12 @@ export default function TranscriptionDetails() {
   if (!transcription) {
     return (
       <div className="flex min-h-screen flex-col">
-        <Header />
+        <Header locale={locale} onToggleLocale={toggleLocale} />
         <main className="flex-1 flex items-center justify-center">
           <div className="text-center space-y-4">
-            <p className="text-muted-foreground">Transcricao nao encontrada.</p>
+            <p className="text-muted-foreground">{t('detail.notFound')}</p>
             <Link href="/dashboard">
-              <Button>Voltar ao Dashboard</Button>
+              <Button>{t('detail.backToDashboard')}</Button>
             </Link>
           </div>
         </main>
@@ -162,7 +166,7 @@ export default function TranscriptionDetails() {
 
   return (
     <div className="flex min-h-screen flex-col">
-      <Header />
+      <Header locale={locale} onToggleLocale={toggleLocale} />
       <main className="flex-1">
         <div className="container max-w-4xl py-8 space-y-6">
           {/* Back link */}
@@ -171,7 +175,7 @@ export default function TranscriptionDetails() {
             className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
           >
             <ArrowLeft className="h-4 w-4" />
-            Voltar ao Dashboard
+            {t('detail.backToDashboard')}
           </Link>
 
           {/* Header section */}
@@ -179,14 +183,14 @@ export default function TranscriptionDetails() {
             <div className="flex items-start justify-between gap-4">
               <h1 className="text-2xl font-bold tracking-tight">{transcription.title}</h1>
               <div className="flex items-center gap-2 shrink-0">
-                <Button variant="outline" size="sm" onClick={handleCopy} title="Copiar texto">
+                <Button variant="outline" size="sm" onClick={handleCopy} title={t('detail.copyText')}>
                   {copied ? (
                     <Check className="h-4 w-4" />
                   ) : (
                     <Copy className="h-4 w-4" />
                   )}
                 </Button>
-                <Button variant="outline" size="sm" onClick={handleExportTxt} title="Exportar TXT">
+                <Button variant="outline" size="sm" onClick={handleExportTxt} title={t('detail.exportTxt')}>
                   <Download className="h-4 w-4" />
                 </Button>
                 <Button
@@ -194,7 +198,7 @@ export default function TranscriptionDetails() {
                   size="sm"
                   onClick={() => setShowDeleteDialog(true)}
                   className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                  title="Excluir"
+                  title={t('detail.delete')}
                 >
                   <Trash2 className="h-4 w-4" />
                 </Button>
@@ -206,7 +210,7 @@ export default function TranscriptionDetails() {
               {getStatusBadge(transcription.status)}
               <span className="inline-flex items-center gap-1.5">
                 {getSourceIcon(transcription.source)}
-                {getSourceLabel(transcription.source, 'long')}
+                {getSourceLabel(transcription.source)}
               </span>
               {formatDuration(transcription.duration_seconds) && (
                 <span className="inline-flex items-center gap-1">
@@ -223,7 +227,7 @@ export default function TranscriptionDetails() {
             {/* Prompt used */}
             {transcription.prompt && (
               <div className="rounded-lg border bg-muted/40 px-4 py-3">
-                <p className="text-xs font-medium text-muted-foreground mb-1">Prompt utilizado:</p>
+                <p className="text-xs font-medium text-muted-foreground mb-1">{t('detail.promptUsed')}</p>
                 <p className="text-sm">{transcription.prompt}</p>
               </div>
             )}
@@ -234,11 +238,11 @@ export default function TranscriptionDetails() {
             <Card className="border-destructive/30">
               <CardContent className="flex flex-col items-center justify-center py-12 space-y-4">
                 <p className="text-muted-foreground text-center">
-                  Ocorreu um erro ao processar sua transcricao. Por favor, tente novamente.
+                  {t('detail.errorMessage')}
                 </p>
                 <Link href="/dashboard/new">
                   <Button variant="outline" size="sm">
-                    Criar Nova Transcricao
+                    {t('detail.createNew')}
                   </Button>
                 </Link>
               </CardContent>
@@ -247,9 +251,9 @@ export default function TranscriptionDetails() {
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
               <TabsList>
                 {hasProcessedContent && (
-                  <TabsTrigger value="transcript">Processada</TabsTrigger>
+                  <TabsTrigger value="transcript">{t('detail.tab.processed')}</TabsTrigger>
                 )}
-                <TabsTrigger value="raw">Original</TabsTrigger>
+                <TabsTrigger value="raw">{t('detail.tab.raw')}</TabsTrigger>
               </TabsList>
 
               {hasProcessedContent && (
@@ -273,7 +277,7 @@ export default function TranscriptionDetails() {
                       </pre>
                     ) : (
                       <p className="text-muted-foreground text-center py-8">
-                        Nenhum conteudo de transcricao disponivel.
+                        {t('detail.noContent')}
                       </p>
                     )}
                   </CardContent>
@@ -288,11 +292,11 @@ export default function TranscriptionDetails() {
               {showReprocess ? (
                 <Card>
                   <CardHeader>
-                    <h3 className="font-semibold">Reprocessar com novo prompt</h3>
+                    <h3 className="font-semibold">{t('detail.reprocess.title')}</h3>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <Textarea
-                      placeholder="Ex: Crie uma lista com os principais topicos discutidos..."
+                      placeholder={t('detail.reprocess.placeholder')}
                       value={reprocessPrompt}
                       onChange={(e) => setReprocessPrompt(e.target.value)}
                       className="min-h-24"
@@ -308,10 +312,10 @@ export default function TranscriptionDetails() {
                         {isReprocessing ? (
                           <>
                             <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                            Reprocessando...
+                            {t('detail.reprocess.processing')}
                           </>
                         ) : (
-                          'Reprocessar'
+                          t('detail.reprocess.button')
                         )}
                       </Button>
                       <Button
@@ -322,7 +326,7 @@ export default function TranscriptionDetails() {
                           setReprocessError(null);
                         }}
                       >
-                        Cancelar
+                        {t('detail.reprocess.cancel')}
                       </Button>
                     </div>
                   </CardContent>
@@ -330,11 +334,11 @@ export default function TranscriptionDetails() {
               ) : (
                 <div className="flex flex-col items-center gap-3 py-4">
                   <p className="text-sm text-muted-foreground">
-                    Nao esta satisfeito? Reprocesse com um prompt diferente.
+                    {t('detail.reprocess.cta')}
                   </p>
                   <Button variant="outline" size="sm" onClick={() => setShowReprocess(true)}>
                     <RefreshCw className="h-4 w-4 mr-2" />
-                    Reprocessar com Novo Prompt
+                    {t('detail.reprocess.ctaButton')}
                   </Button>
                 </div>
               )}
@@ -345,8 +349,8 @@ export default function TranscriptionDetails() {
 
       <ConfirmDialog
         open={showDeleteDialog}
-        title="Excluir transcricao"
-        description="Tem certeza que deseja excluir esta transcricao? Esta acao nao pode ser desfeita."
+        title={t('dashboard.delete.title')}
+        description={t('dashboard.delete.description')}
         onConfirm={handleDelete}
         onCancel={() => setShowDeleteDialog(false)}
       />

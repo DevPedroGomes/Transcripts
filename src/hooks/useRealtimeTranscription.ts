@@ -60,20 +60,21 @@ export function useRealtimeTranscription() {
     setState('requesting');
 
     try {
-      // 1. Get temporary key from server
-      const tokenRes = await fetch('/api/transcribe/realtime/token', { method: 'POST' });
+      // 1. Fetch token and request microphone in parallel
+      const [tokenRes, stream] = await Promise.all([
+        fetch('/api/transcribe/realtime/token', { method: 'POST' }),
+        navigator.mediaDevices.getUserMedia({
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+          },
+        }),
+      ]);
       const tokenData = await tokenRes.json();
       if (!tokenRes.ok || !tokenData.success) {
+        stream.getTracks().forEach((t) => t.stop());
         throw new Error(tokenData.error || 'Falha ao obter token.');
       }
-
-      // 2. Request microphone access
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-        },
-      });
       streamRef.current = stream;
 
       // 3. Open WebSocket to Deepgram
@@ -142,7 +143,7 @@ export function useRealtimeTranscription() {
         }
       };
 
-      mediaRecorder.start(250); // Send chunks every 250ms
+      mediaRecorder.start(100); // Send chunks every 100ms for low latency
 
       // 6. Start timer
       startTimeRef.current = Date.now();
