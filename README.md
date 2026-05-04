@@ -1,169 +1,163 @@
 # Meetings Transcript
 
-Audio and video transcription application powered by AI. Supports file uploads, YouTube URLs, and realtime microphone recording with speech-to-text via Deepgram Nova-3 and optional AI processing through Groq Llama 3.3 70B.
+Audio and video transcription showcase. Three input pipelines (file upload, YouTube URL, realtime microphone) feed Deepgram for speech-to-text and an optional LLM step for prompt-driven summarization or analysis. No database: transcriptions are persisted client-side in `localStorage`. Built with Next.js 16 App Router and deployed as a single hardened container behind Traefik.
 
-Built as a self-contained showcase application with no external database -- all data is stored client-side in localStorage.
+## Overview
+
+The application exposes four Next.js API routes — `transcribe/file`, `transcribe/youtube`, `transcribe/realtime/token`, and `reprocess` — all of which guard vendor calls behind a daily budget, a global kill switch, and per-IP rate limiting. The browser holds all transcription state; the server is stateless apart from in-memory rate-limit counters and a file-backed budget ledger on a Docker volume.
+
+## Pipelines
+
+### File upload
+The browser POSTs `multipart/form-data` (audio + title + optional prompt) to `/api/transcribe/file`. The route validates the file type and size (50 MB cap), reserves prerecorded budget, sends the buffer to the Deepgram REST endpoint with `audio/mp3` content-type, and finalizes the budget reservation against the actual `metadata.duration` returned by Deepgram. If a prompt is present, the raw transcript is forwarded to the LLM provider; the result, plus the raw transcript, is returned to the client.
+
+### YouTube URL
+The browser POSTs `{ title, youtubeUrl, prompt? }` to `/api/transcribe/youtube`. After validation, the route reserves budget and shells out to the system `yt-dlp` binary via `execFile` to download the audio track to `/tmp` (capped at 200 MB / ~2 hours, no playlist, no cache directory writes outside `/tmp/ytdlp-cache`). The resulting buffer is sent to Deepgram exactly like a file upload.
+
+### Realtime microphone
+The browser asks `/api/transcribe/realtime/token` for a short-lived Deepgram key (TTL 5 s, scope `member`, tagged `realtime-showcase-temp`), then opens a WebSocket directly to `wss://api.deepgram.com/v1/listen` and streams Opus chunks captured from `MediaRecorder`. The server is no longer in the audio path. A session is capped at 3 minutes, with a 30-second per-IP cooldown and at most 5 concurrent sessions globally.
 
 ## Architecture
 
-Next.js API routes handle all audio processing server-side: receiving uploads, downloading YouTube audio, creating temporary Deepgram keys for realtime sessions, and calling the Groq LLM for AI processing. The client stores all transcription results in localStorage and manages the realtime microphone WebSocket connection directly with Deepgram.
-
-```
-Browser (Client)                         Server (API Routes)                    External Services
--------------------                      -------------------                    ------------------
-Landing Page                             POST /api/transcribe/file              Deepgram Nova-3 (STT)
-Dashboard (list)                         POST /api/transcribe/youtube           Groq Llama 3.3 70B (LLM)
-New Transcription Form                   POST /api/reprocess                    YouTube (audio download)
-Transcription Detail                     POST /api/transcribe/realtime/token
-localStorage (persistence)
-```
-
-The realtime path is different from file and YouTube: the browser opens a WebSocket directly to Deepgram using a short-lived temporary API key issued by the server. Audio chunks from the microphone are streamed over this WebSocket, and transcript fragments are received back in real time.
-
-## Pipeline
-
 ```mermaid
 flowchart TD
-    subgraph Input
-        F[File Upload]
-        Y[YouTube URL]
-        M[Realtime Microphone]
-    end
-
-    subgraph Server["Next.js API Routes"]
-        FA["/api/transcribe/file"]
-        YA["/api/transcribe/youtube"]
-        DL[Download YouTube Audio]
-        TK["/api/transcribe/realtime/token"]
-        RE["/api/reprocess"]
-    end
-
-    subgraph External["External Services"]
-        DG["Deepgram Nova-3 (REST)"]
-        DGW["Deepgram Nova-3 (WebSocket)"]
-        GQ["Groq Llama 3.3 70B"]
-    end
-
-    subgraph Client["Browser"]
-        WS[WebSocket Connection]
+    subgraph Browser["Browser (Client)"]
+        UI[UI: file / YouTube / mic]
+        WS[Direct Deepgram WebSocket]
         LS[(localStorage)]
     end
 
-    F -->|audio buffer| FA
-    Y -->|URL| YA
-    YA --> DL -->|audio buffer| DG
-    FA -->|audio buffer| DG
+    subgraph Server["Next.js 16 API Routes"]
+        FF[/transcribe/file/]
+        YT[/transcribe/youtube/]
+        TK[/transcribe/realtime/token/]
+        RP[/reprocess/]
+        GUARD{{Kill switch +<br/>Daily budget +<br/>Per-IP rate limit}}
+    end
 
-    DG -->|raw transcript| FA
-    DG -->|raw transcript| YA
+    subgraph Tools["Server-side tools"]
+        YDL[yt-dlp via execFile<br/>--max-filesize 200m<br/>--cache-dir /tmp/ytdlp-cache]
+    end
 
-    FA -->|optional prompt| GQ
-    YA -->|optional prompt| GQ
-    RE -->|raw transcript + prompt| GQ
-    GQ -->|processed text| FA
-    GQ -->|processed text| YA
-    GQ -->|processed text| RE
+    subgraph Vendors["External vendors"]
+        DGREST[Deepgram REST<br/>nova-2 pt-BR diarize]
+        DGWS[Deepgram WSS<br/>nova-3 pt-BR opus 48k]
+        LLM[LLM provider<br/>OpenRouter default<br/>Groq fallback]
+    end
 
-    FA -->|transcription JSON| LS
-    YA -->|transcription JSON| LS
-    RE -->|updated transcript| LS
+    UI -->|audio file| FF
+    UI -->|YouTube URL| YT
+    UI -->|start session| TK
+    UI -->|raw + prompt| RP
 
-    M --> TK -->|temporary key| WS
-    WS -->|audio chunks| DGW
-    DGW -->|transcript fragments| WS
-    WS -->|final transcript| LS
+    FF --> GUARD
+    YT --> GUARD
+    TK --> GUARD
+    RP --> GUARD
+
+    YT --> YDL --> YT
+
+    GUARD -->|reserve prerecorded| FF
+    GUARD -->|reserve prerecorded| YT
+    GUARD -->|reserve realtime| TK
+
+    FF -->|audio buffer| DGREST
+    YT -->|audio buffer| DGREST
+    DGREST -->|raw transcript + duration| FF
+    DGREST -->|raw transcript + duration| YT
+
+    TK -->|temp key TTL 5s| UI
+    UI -.->|opens WSS with temp key| WS
+    WS <-->|opus chunks / interim+final| DGWS
+
+    FF -->|optional prompt| LLM
+    YT -->|optional prompt| LLM
+    RP -->|raw + prompt| LLM
+    LLM -->|processed text + usage| FF
+    LLM -->|processed text + usage| YT
+    LLM -->|processed text| RP
+
+    FF -->|JSON response| LS
+    YT -->|JSON response| LS
+    RP -->|processed text| LS
+    WS -->|final fragments| LS
 ```
 
-### Stage 1: Speech-to-Text (Deepgram)
+## Tech stack
 
-Audio is sent to the Deepgram Nova-3 model. For file uploads and YouTube, this is a single REST POST with the full audio buffer. For realtime, the browser streams audio chunks over a WebSocket using a temporary API key (10-second TTL) created by the server. The API returns raw transcript text with word-level timestamps, speaker diarization, smart formatting, and punctuation.
+Versions taken from `package.json`:
 
-File/YouTube configuration: `model=nova-2, language=pt-BR, smart_format=true, punctuate=true, diarize=true`.
-Realtime configuration: `model=nova-3, language=pt-BR, smart_format=true, punctuate=true, interim_results=true, endpointing=300, vad_events=true`.
+| Layer | Choice | Notes |
+|---|---|---|
+| Framework | Next.js 16.1.4 (App Router, Turbopack dev) | Standalone output for Docker |
+| Language | TypeScript 5.7 | Strict on both client and server |
+| UI | React 19, Tailwind CSS 4, Radix primitives, shadcn-style components, `lucide-react`, `next-themes` | Dark / light / system |
+| STT | Deepgram | `nova-2` for prerecorded REST, `nova-3` for realtime WebSocket, both `pt-BR`, smart format + punctuate; prerecorded adds diarization, realtime adds VAD events and 200 ms endpointing |
+| LLM SDK | `openai` 4.77 (default, pointed at OpenRouter `https://openrouter.ai/api/v1`) and `groq-sdk` 0.37 (rollback) | Single `groq.ts` module abstracts both — filename kept for import-site stability |
+| YouTube audio | System `yt-dlp` binary, called via `child_process.execFile` | `ffmpeg` + `python3` installed in the runner image |
+| Concurrency primitive | `async-mutex` | Serializes budget read/write |
+| Persistence | Browser `localStorage` | No DB, no server-side user state |
+| Reverse proxy | Traefik v3 with Let's Encrypt | CSP, HSTS, Permissions-Policy injected at the edge |
 
-### Stage 2: LLM Processing (Groq)
+`@distube/ytdl-core` is still listed as a dependency from the previous implementation but is no longer used at runtime — the production path is `yt-dlp`.
 
-This stage is optional and triggered only when the user provides a custom prompt (e.g., "extract action items", "summarize key decisions", "list topics discussed"). The raw transcript is sent to Groq's Llama 3.3 70B model with `temperature=0.5`. A system prompt instructs the model to analyze and organize the transcription content according to the user's instructions. Users can reprocess any completed transcription with a different prompt at any time without re-transcribing the audio.
+## Cost-control and safety
 
-## Input Methods
+This is a public showcase with my own API keys behind it, so multiple layers exist specifically to bound the worst case.
 
-**File Upload** -- Drag-and-drop or browse for audio files. Supports MP3, WAV, M4A, OGG, FLAC, WebM, and AAC formats up to 50MB. The file is sent as a buffer to Deepgram's REST API for batch transcription.
+- **Daily budget (`src/lib/budget.ts`).** A JSON ledger persisted to `/data/budget.json` (Docker volume) with three buckets and hard UTC-day ceilings: `deepgram-realtime` 1800 s, `deepgram-prerecorded` 14400 s, and `groq` 500000 tokens (the bucket name is internal and applies to whichever LLM provider is active). Each route uses **reserve-then-finalize** semantics: it reserves a conservative estimate before calling the vendor, then on success or failure adjusts the counter to the real measured cost (`metadata.duration` from Deepgram, `usage.total_tokens` from the LLM). All reads and writes are serialized through an `async-mutex`. When a bucket is full, the route returns HTTP 503 with `Retry-After` set to seconds-until-midnight-UTC.
+- **Global kill switch.** `DEEPGRAM_KILL_SWITCH=1` forces every transcription route (`file`, `youtube`, `realtime/token`) to return 503 immediately, before any vendor call or budget check. Toggle without redeploy by editing the env and restarting the container.
+- **Realtime token hardening (`src/app/api/transcribe/realtime/token/route.ts`).** Temporary Deepgram keys are issued with scope `member` and a 5-second TTL, tagged so they show up cleanly in Deepgram's audit log. The browser must use the key immediately to open the WebSocket; long-lived theft is bounded by TTL.
+- **IP detection (`src/lib/rate-limiter.ts`).** Client IP is read **only** from `x-real-ip`, which Traefik is configured to set authoritatively. `x-forwarded-for` is ignored because it is user-spoofable. Requests without a usable IP collapse into an `unknown` bucket with the same per-IP cooldowns.
+- **Per-IP rate limits.** In-memory rolling windows per route — appropriate for a single-instance showcase. `transcribe/file` 10/h, `transcribe/youtube` 5/h, `reprocess` 15/h, and `transcribe/realtime/token` enforces 30 s per-IP cooldown plus 5 concurrent sessions globally.
+- **Log redaction (`src/lib/log-sanitize.ts`).** Every error-path `console.*` in `deepgram.ts`, `groq.ts`, the routes, and the `yt-dlp` stderr capture passes strings through `sanitize()`, which redacts `Token <key>`, `Bearer <token>`, `gsk_*`, `sk_test_*` / `sk_live_*`, and Deepgram-style 40-char hex fingerprints starting with `3ae33e`.
+- **LLM provider abstraction (`src/lib/ai/groq.ts`).** Default is OpenRouter with `deepseek/deepseek-chat` (cost), with `LLM_PROVIDER=groq` as a documented rollback path. The OpenRouter client sends `HTTP-Referer` and `X-Title` so usage shows up tagged in their dashboard. If neither key is set, the LLM step is skipped and the raw transcript is returned with `ai_skipped: true`.
+- **Container hardening (`Dockerfile`).** A `prebuild` hook in `package.json` refuses to build on the host (`IN_DOCKER_BUILD` guard) — this stops `.env` from leaking into a bundled standalone build. The Dockerfile also runs `find .next/standalone -name '.env*' -delete` after the build as belt-and-suspenders. The runner stage drops to a non-root `nextjs` user (uid 1001), pre-creates `/home/nextjs`, `/tmp/ytdlp-cache`, and `/data` with the correct ownership, and sets `XDG_CACHE_HOME` to `/tmp/ytdlp-cache` so `yt-dlp` cannot write outside its sandbox.
+- **Edge headers (Traefik labels in `docker-compose.yml`).** Strict `Content-Security-Policy` with `connect-src 'self' wss://api.deepgram.com https://api.deepgram.com` so the browser can only WebSocket to Deepgram, plus `Permissions-Policy: microphone=(self), camera=(), geolocation=()`, HSTS preload, `frameDeny`, `nosniff`, `referrer-policy strict-origin-when-cross-origin`, and a global rate-limit + server-header strip.
 
-**YouTube URL** -- Paste any public YouTube video URL. The server downloads the audio track using `@distube/ytdl-core` (capped at 200MB / approximately 2 hours), buffers it in memory, and sends it to Deepgram for transcription.
+## Local development
 
-**Realtime Microphone** -- Record directly from the browser microphone with live transcription. The server issues a short-lived Deepgram API key (10-second TTL) so the browser can open a WebSocket connection directly to Deepgram. Audio is captured via MediaRecorder and streamed in 250ms chunks. Interim and final transcript results appear in real time. Sessions are capped at 3 minutes with a 30-second cooldown between sessions and a maximum of 5 concurrent sessions globally.
-
-## Tech Stack
-
-| Component | Technology | Role |
-|-----------|-----------|------|
-| Framework | Next.js 16 (App Router, Turbopack) | Server-side API routes and static rendering |
-| UI | React 19, Tailwind CSS 4, Radix UI, Shadcn UI | Component library and styling |
-| Language | TypeScript 5.7 | Type safety across client and server |
-| Speech-to-Text | Deepgram Nova-3 API | Audio transcription (REST and WebSocket) |
-| LLM Processing | Groq Llama 3.3 70B | Optional AI summarization and analysis |
-| YouTube Audio | @distube/ytdl-core | Download audio from YouTube videos |
-| Storage | Browser localStorage | Client-side transcription persistence |
-| Theming | next-themes | System, dark, and light mode support |
-| Deployment | Docker (Node.js 20 Alpine) + Traefik | Containerized with automatic HTTPS |
-
-## Getting Started
-
-### Prerequisites
-
-- Node.js 20+
-- A [Deepgram](https://deepgram.com) API key (free tier available)
-- A Deepgram Project ID (required for realtime temporary key generation)
-- A [Groq](https://console.groq.com) API key (free tier available)
-
-### Environment Variables
-
-Create a `.env` file in the project root:
-
-```
-DEEPGRAM_API_KEY=your_deepgram_api_key
-DEEPGRAM_PROJECT_ID=your_deepgram_project_id
-GROQ_API_KEY=your_groq_api_key
-```
-
-`DEEPGRAM_API_KEY` -- Used for file and YouTube transcription (REST API) and for creating temporary keys for realtime sessions.
-
-`DEEPGRAM_PROJECT_ID` -- Required by the Deepgram key management API to issue short-lived keys for realtime WebSocket connections.
-
-`GROQ_API_KEY` -- Used for optional AI processing of transcripts. If not set, AI processing is skipped and raw transcripts are returned.
-
-### Running Locally
+Prerequisites: Node.js 20+, a Deepgram API key, a Deepgram project ID (required to mint realtime temp keys), and either an OpenRouter or a Groq API key.
 
 ```bash
+cp .env.example .env
+# Edit .env with your keys (see "Environment variables" below)
 npm install
 npm run dev
 ```
 
-Open http://localhost:3000.
-
-### Running with Docker
+Open `http://localhost:3000`. Note that `npm run build` will refuse to run on the host — see Deployment below. For tests:
 
 ```bash
-# Set your API keys in .env
+npm test
+```
+
+## Deployment
+
+The production path is Docker only. The host build is intentionally blocked by a `prebuild` guard in `package.json` (`IN_DOCKER_BUILD=1` is set inside the Dockerfile builder stage), which prevents accidentally bundling host `.env` files into a standalone deploy.
+
+```bash
 cp .env.example .env
-# Edit .env with your keys
+# Edit .env
 
-# Build and start
-docker compose up -d
-
-# Check logs
+docker compose up -d --build
 docker compose logs -f
 ```
 
-The container runs as a non-root user, uses the Next.js standalone output for minimal image size, and includes a health check on port 3000. The Docker Compose file is preconfigured for Traefik reverse proxy with automatic HTTPS via Let's Encrypt.
+The compose file is wired for the `pgdev.com.br` Traefik network (`networks.proxy` external) and exposes the app at `https://transcripts.pgdev.com.br` with auto-issued Let's Encrypt certs. The `transcripts-budget` named volume is mounted at `/data` and persists the daily budget ledger across container restarts.
 
-## Rate Limits
+## Environment variables
 
-All rate limits are per-IP and enforced in-memory (appropriate for a single-instance showcase).
+| Variable | Required | Default | Purpose |
+|---|---|---|---|
+| `DEEPGRAM_API_KEY` | Yes | — | Used for prerecorded REST calls and to mint realtime temp keys |
+| `DEEPGRAM_PROJECT_ID` | Yes (for realtime) | — | Project under which temp keys are created |
+| `DEEPGRAM_KILL_SWITCH` | No | `0` | Set to `1` to force 503 on every transcription route |
+| `LLM_PROVIDER` | No | `openrouter` | `openrouter` or `groq` |
+| `LLM_MODEL` | No | `deepseek/deepseek-chat` | Used when provider is OpenRouter |
+| `OPENROUTER_API_KEY` | If `LLM_PROVIDER=openrouter` | — | Sent as bearer token to `https://openrouter.ai/api/v1` |
+| `GROQ_API_KEY` | If `LLM_PROVIDER=groq` | — | Used when rolling back to Groq |
+| `GROQ_MODEL` | No | `llama-3.3-70b-versatile` | Used only when provider is Groq |
+| `BUDGET_DIR` | No | `/data` | Directory for the budget ledger; the Docker volume mounts here |
 
-| Endpoint | Limit | Window |
-|----------|-------|--------|
-| `POST /api/transcribe/file` | 10 requests | 1 hour |
-| `POST /api/transcribe/youtube` | 5 requests | 1 hour |
-| `POST /api/reprocess` | 15 requests | 1 hour |
-| `POST /api/transcribe/realtime/token` | 5 concurrent sessions globally, 30s cooldown per IP | Rolling |
+If no LLM key is configured, the LLM step is skipped silently and the response carries `ai_skipped: true`.
