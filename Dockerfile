@@ -14,7 +14,9 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
+ENV IN_DOCKER_BUILD=1
 RUN npm run build
+RUN find .next/standalone -name '.env*' -delete 2>/dev/null || true
 
 # Production image
 FROM base AS runner
@@ -36,6 +38,13 @@ COPY --from=builder /app/public ./public
 # Standalone output
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+
+# yt-dlp needs a writable HOME / cache; without these it tries to write to
+# / and fails as the non-root nextjs user.
+ENV HOME=/home/nextjs
+ENV XDG_CACHE_HOME=/tmp/ytdlp-cache
+RUN mkdir -p /home/nextjs /tmp/ytdlp-cache /data \
+    && chown -R nextjs:nodejs /home/nextjs /tmp/ytdlp-cache /data
 
 USER nextjs
 

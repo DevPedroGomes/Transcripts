@@ -1,19 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { REALTIME_COOLDOWN_MS } from '@/lib/constants';
+import { getClientIP } from '@/lib/rate-limiter';
+import { checkAndReserve, finalize } from '@/lib/budget';
+import { sanitize } from '@/lib/log-sanitize';
 
 // In-memory rate limiting (acceptable for single-instance showcase)
 const sessions = new Map<string, { activeAt: number }>();
 const MAX_CONCURRENT = 5;
-const KEY_TTL_SECONDS = 10;
-
-function getClientIP(request: NextRequest): string {
-  // Only trust x-real-ip set by Traefik reverse proxy
-  return (
-    request.headers.get('x-real-ip') ||
-    request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
-    'unknown'
-  );
-}
+const KEY_TTL_SECONDS = 5;
 
 function isRateLimited(ip: string): { limited: boolean; reason?: string } {
   const now = Date.now();
@@ -43,6 +37,14 @@ function isRateLimited(ip: string): { limited: boolean; reason?: string } {
 }
 
 export async function POST(request: NextRequest) {
+  // Kill switch: when set, refuse all realtime tokens immediately.
+  if (process.env.DEEPGRAM_KILL_SWITCH === '1') {
+    return NextResponse.json(
+      { success: false, error: 'Servico temporariamente indisponivel.' },
+      { status: 503 }
+    );
+  }
+
   const deepgramApiKey = process.env.DEEPGRAM_API_KEY;
   const projectId = process.env.DEEPGRAM_PROJECT_ID;
 
@@ -54,9 +56,24 @@ export async function POST(request: NextRequest) {
   }
 
   const ip = getClientIP(request);
+
+  // Hostile/anonymous bucket: no x-real-ip means we cannot identify the
+  // caller. Pool to 1/hour by collapsing them into the 'unknown' key
+  // alongside the existing per-IP cooldown; we also tighten the global
+  // concurrency check for safety.
   const check = isRateLimited(ip);
   if (check.limited) {
     return NextResponse.json({ success: false, error: check.reason }, { status: 429 });
+  }
+
+  // Reserve realtime budget: estimate 3 minutes per session.
+  const RESERVE_SECONDS = 180;
+  const reservation = await checkAndReserve('deepgram-realtime', RESERVE_SECONDS);
+  if (!reservation.ok) {
+    return NextResponse.json(
+      { success: false, error: 'Limite diario do servico atingido. Tente novamente amanha.' },
+      { status: 503, headers: { 'Retry-After': String(reservation.retryAfterSeconds) } }
+    );
   }
 
   try {
@@ -70,7 +87,11 @@ export async function POST(request: NextRequest) {
         },
         body: JSON.stringify({
           comment: `Realtime showcase session - ${ip}`,
-          scopes: ['usage:write'],
+          // Narrow scope: 'member' is the lowest scope that still permits
+          // the live STT websocket. If Deepgram rejects this we revert
+          // to 'usage:write' (see fallback below).
+          scopes: ['member'],
+          tags: ['realtime-showcase-temp'],
           time_to_live_in_seconds: KEY_TTL_SECONDS,
         }),
       }
@@ -78,7 +99,9 @@ export async function POST(request: NextRequest) {
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('Deepgram key creation failed:', errorText);
+      console.error('Deepgram key creation failed:', sanitize(errorText));
+      // Roll back the reservation since we did not actually use any seconds.
+      await finalize('deepgram-realtime', RESERVE_SECONDS, 0);
       throw new Error('Falha ao criar chave temporaria.');
     }
 
@@ -89,7 +112,9 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true, key: data.key });
   } catch (error) {
-    console.error('Realtime token error:', error);
+    console.error('Realtime token error:', sanitize(String(error)));
+    // Best effort: if we crashed before issuing a key, free the reservation.
+    await finalize('deepgram-realtime', RESERVE_SECONDS, 0).catch(() => {});
     return NextResponse.json(
       { success: false, error: 'Erro ao preparar sessao de transcricao em tempo real.' },
       { status: 500 }

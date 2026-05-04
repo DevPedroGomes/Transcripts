@@ -4,3 +4,14 @@ node_modules
 .env
 .env.*
 *.md
+*.log
+*player-script.js
+/.next
+/coverage
+Dockerfile*
+docker-compose*.yml
+README.md
+.claude
+.swc
+.vscode
+tsconfig.tsbuildinfo

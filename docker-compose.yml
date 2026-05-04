@@ -10,7 +10,16 @@ services:
     environment:
       DEEPGRAM_API_KEY: ${DEEPGRAM_API_KEY}
       DEEPGRAM_PROJECT_ID: ${DEEPGRAM_PROJECT_ID}
-      GROQ_API_KEY: ${GROQ_API_KEY}
+      DEEPGRAM_KILL_SWITCH: ${DEEPGRAM_KILL_SWITCH:-0}
+      BUDGET_DIR: /data
+      # LLM via OpenRouter (default). Set LLM_PROVIDER=groq pra rollback.
+      LLM_PROVIDER: ${LLM_PROVIDER:-openrouter}
+      LLM_MODEL: ${LLM_MODEL:-deepseek/deepseek-chat}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+      GROQ_MODEL: ${GROQ_MODEL:-llama-3.3-70b-versatile}
+    volumes:
+      - transcripts-budget:/data
     networks:
       - proxy
     labels:
@@ -19,7 +28,7 @@ services:
       - "traefik.http.routers.transcripts.rule=Host(`transcripts.pgdev.com.br`)"
       - "traefik.http.routers.transcripts.tls=true"
       - "traefik.http.routers.transcripts.tls.certresolver=letsencrypt"
-      - "traefik.http.routers.transcripts.middlewares=transcripts-security@docker"
+      - "traefik.http.routers.transcripts.middlewares=transcripts-security@docker,global-ratelimit@file,strip-server-header@file"
       - "traefik.http.services.transcripts.loadbalancer.server.port=3000"
       # Security Headers
       - "traefik.http.middlewares.transcripts-security.headers.stsSeconds=31536000"
@@ -30,12 +39,18 @@ services:
       - "traefik.http.middlewares.transcripts-security.headers.browserXssFilter=true"
       - "traefik.http.middlewares.transcripts-security.headers.referrerPolicy=strict-origin-when-cross-origin"
       - "traefik.http.middlewares.transcripts-security.headers.frameDeny=true"
+      # CSP + Permissions-Policy (Onda 3)
+      - "traefik.http.middlewares.transcripts-security.headers.contentSecurityPolicy=default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src 'self' wss://api.deepgram.com https://api.deepgram.com; media-src 'self' blob:; img-src 'self' data:; font-src 'self' data:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+      - "traefik.http.middlewares.transcripts-security.headers.permissionsPolicy=microphone=(self), camera=(), geolocation=()"
     healthcheck:
       test: ["CMD", "wget", "-O", "-", "http://127.0.0.1:3000"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 40s
+
+volumes:
+  transcripts-budget:
 
 networks:
   proxy:

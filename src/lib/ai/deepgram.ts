@@ -1,5 +1,6 @@
 import { TranscriptionSegment } from '../types';
 import { DEEPGRAM_API_URL, DEEPGRAM_DEFAULT_PARAMS } from '../constants';
+import { sanitize } from '../log-sanitize';
 import { execFile } from 'child_process';
 import { promisify } from 'util';
 import * as fs from 'fs';
@@ -48,7 +49,7 @@ export async function transcribeAudio(
 
   if (!response.ok) {
     const errorText = await response.text();
-    console.error(`Deepgram API error: ${response.status} ${response.statusText} - ${errorText}`);
+    console.error(`Deepgram API error: ${response.status} ${response.statusText} - ${sanitize(errorText)}`);
 
     if (response.status === 402 || response.status === 403) {
       throw new Error(
@@ -103,12 +104,16 @@ export async function downloadYouTubeAudio(youtubeUrl: string): Promise<Buffer> 
       '--max-filesize', '200m',
       '--socket-timeout', '30',
       '--js-runtimes', 'node',
+      '--no-cache-dir',
+      '--no-write-info-json',
+      '--no-write-playlist-metafiles',
+      '--cache-dir', '/tmp/ytdlp-cache',
       '-o', tmpFile,
       youtubeUrl,
     ], { timeout: 120_000 });
 
     if (stderr) {
-      console.log('yt-dlp stderr:', stderr);
+      console.log('yt-dlp stderr:', sanitize(stderr));
     }
 
     // yt-dlp appends format extension before converting, check both patterns
@@ -121,7 +126,7 @@ export async function downloadYouTubeAudio(youtubeUrl: string): Promise<Buffer> 
       const dir = path.dirname(tmpFile);
       const prefix = path.basename(tmpFile).replace('.wav', '');
       const files = fs.readdirSync(dir).filter(f => f.includes(prefix));
-      console.error('yt-dlp output files:', files);
+      console.error('yt-dlp output files:', sanitize(files.join(',')));
       throw new Error('yt-dlp did not produce output file');
     }
 
@@ -138,7 +143,7 @@ export async function downloadYouTubeAudio(youtubeUrl: string): Promise<Buffer> 
     const stderr = err.stderr || '';
     const combined = message + ' ' + stderr;
 
-    console.error('yt-dlp error:', combined.substring(0, 500));
+    console.error('yt-dlp error:', sanitize(combined.substring(0, 500)));
 
     if (combined.includes('Private video')) {
       throw new Error('Este video e privado. Verifique se o video e publico.');

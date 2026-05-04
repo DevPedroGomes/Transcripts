@@ -4,9 +4,18 @@ import { processTranscriptionWithAI } from '@/lib/ai/groq';
 import { randomUUID } from 'crypto';
 import { sanitizePrompt, validateTitle, validateYouTubeUrl } from '@/lib/validation';
 import { getClientIP, checkRateLimit } from '@/lib/rate-limiter';
+import { checkAndReserve, finalize } from '@/lib/budget';
+import { sanitize } from '@/lib/log-sanitize';
 import type { StoredTranscription, TranscribeApiResponse } from '@/lib/types';
 
 export async function POST(request: NextRequest) {
+  if (process.env.DEEPGRAM_KILL_SWITCH === '1') {
+    return NextResponse.json<TranscribeApiResponse>(
+      { success: false, error: 'Servico temporariamente indisponivel.' },
+      { status: 503 }
+    );
+  }
+
   const ip = getClientIP(request);
   const rateCheck = checkRateLimit(ip, 'transcribe-youtube', { maxRequests: 5, windowMs: 60 * 60 * 1000 });
   if (rateCheck.limited) {
@@ -38,20 +47,45 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Download YouTube audio
-    const audioBuffer = await downloadYouTubeAudio(youtubeUrl);
+    // Reserve prerecorded budget: estimate 5 min/video.
+    const RESERVE_SECONDS = 300;
+    const reservation = await checkAndReserve('deepgram-prerecorded', RESERVE_SECONDS);
+    if (!reservation.ok) {
+      return NextResponse.json<TranscribeApiResponse>(
+        { success: false, error: 'Limite diario do servico atingido. Tente novamente amanha.' },
+        { status: 503, headers: { 'Retry-After': String(reservation.retryAfterSeconds) } }
+      );
+    }
 
-    // Transcribe
-    const { text: transcriptRaw, durationSeconds } = await transcribeAudio(audioBuffer);
+    // Download YouTube audio
+    let transcriptRaw: string;
+    let durationSeconds: number | undefined;
+    try {
+      const audioBuffer = await downloadYouTubeAudio(youtubeUrl);
+      const result = await transcribeAudio(audioBuffer);
+      transcriptRaw = result.text;
+      durationSeconds = result.durationSeconds;
+    } catch (e) {
+      await finalize('deepgram-prerecorded', RESERVE_SECONDS, 0).catch(() => {});
+      throw e;
+    }
+    await finalize('deepgram-prerecorded', RESERVE_SECONDS, durationSeconds ?? RESERVE_SECONDS).catch(() => {});
 
     // Optional AI processing
     let transcriptProcessed: string | undefined;
     let aiSkipped = false;
     if (prompt) {
-      const aiResult = await processTranscriptionWithAI(transcriptRaw, prompt);
-      transcriptProcessed = aiResult.text;
-      if (!aiResult.aiProcessed) {
+      const groqReserve = 5000;
+      const groqRes = await checkAndReserve('groq', groqReserve);
+      if (!groqRes.ok) {
         aiSkipped = true;
+      } else {
+        const aiResult = await processTranscriptionWithAI(transcriptRaw, prompt);
+        transcriptProcessed = aiResult.text;
+        if (!aiResult.aiProcessed) {
+          aiSkipped = true;
+        }
+        await finalize('groq', groqReserve, aiResult.usageTokens ?? groqReserve).catch(() => {});
       }
     }
 
@@ -72,7 +106,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json<TranscribeApiResponse>({ success: true, data: transcription, ai_skipped: aiSkipped || undefined });
   } catch (error) {
-    console.error('Erro ao processar YouTube:', error);
+    console.error('Erro ao processar YouTube:', sanitize(String(error)));
     return NextResponse.json<TranscribeApiResponse>(
       { success: false, error: 'Erro ao processar o video. Tente novamente.' },
       { status: 500 }

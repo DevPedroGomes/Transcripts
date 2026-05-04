@@ -3,14 +3,11 @@ import { NextRequest } from 'next/server';
 const stores = new Map<string, Map<string, number[]>>();
 
 export function getClientIP(request: NextRequest): string {
-  // Only trust x-real-ip set by Traefik (not user-spoofable).
-  // x-forwarded-for is a fallback but take the FIRST entry (client IP),
-  // not the last, since Traefik appends the real client IP at the start.
-  return (
-    request.headers.get('x-real-ip') ||
-    request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
-    'unknown'
-  );
+  // Traefik is configured as a trusted proxy (Onda 2.1) and overwrites
+  // x-real-ip with the real client IP. We do NOT fall back to
+  // x-forwarded-for because that header is user-spoofable.
+  // Callers MUST treat 'unknown' as a hostile/anonymous bucket and rate-limit aggressively.
+  return request.headers.get('x-real-ip') || 'unknown';
 }
 
 export function checkRateLimit(
