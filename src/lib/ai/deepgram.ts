@@ -18,6 +18,23 @@ type WhisperTranscriptionResult = {
 };
 
 /**
+ * Sniff audio mime type from common magic bytes. Deepgram dispatches by
+ * content-type, so a wrong header (e.g. m4a buffer claimed as audio/mp3)
+ * makes its parser fall back to a heuristic that occasionally drops the
+ * first 100ms.
+ */
+function sniffAudioMime(buf: Buffer): string {
+  if (buf.length >= 12 && buf.slice(4, 8).toString() === 'ftyp') return 'audio/mp4';
+  if (buf.length >= 4 && buf.slice(0, 4).toString() === 'RIFF') return 'audio/wav';
+  if (buf.length >= 4 && buf.slice(0, 4).toString() === 'OggS') return 'audio/ogg';
+  if (buf.length >= 4 && buf.slice(0, 4).toString() === 'fLaC') return 'audio/flac';
+  if (buf.length >= 4 && buf.slice(0, 4).toString() === '\x1a\x45\xdf\xa3') return 'audio/webm';
+  if (buf.length >= 3 && (buf[0] === 0xff && (buf[1] & 0xe0) === 0xe0)) return 'audio/mpeg';
+  if (buf.length >= 3 && buf.slice(0, 3).toString() === 'ID3') return 'audio/mpeg';
+  return 'application/octet-stream';
+}
+
+/**
  * Transcribe audio using Deepgram API.
  * Supports both URL (remote file) and Buffer (uploaded file).
  */
@@ -37,7 +54,7 @@ export async function transcribeAudio(
     headers['Content-Type'] = 'application/json';
     body = JSON.stringify({ url: source });
   } else {
-    headers['Content-Type'] = 'audio/mp3';
+    headers['Content-Type'] = sniffAudioMime(source);
     body = source;
   }
 
@@ -83,7 +100,45 @@ export async function transcribeAudio(
     ? Math.round(data.metadata.duration)
     : undefined;
 
-  return { text: transcript.transcript, segments, durationSeconds };
+  const formatted = formatDiarized(transcript);
+  return { text: formatted || transcript.transcript, segments, durationSeconds };
+}
+
+type DGSentence = { text: string; start: number; end: number };
+type DGParagraph = { sentences?: DGSentence[]; speaker?: number; start?: number; end?: number };
+type DGAlternative = {
+  transcript: string;
+  paragraphs?: { paragraphs?: DGParagraph[] };
+};
+
+function fmtTs(seconds: number): string {
+  const m = Math.floor(seconds / 60);
+  const s = Math.floor(seconds % 60);
+  return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+}
+
+/**
+ * Build a transcript string with speaker labels and timestamps from the
+ * Deepgram `paragraphs.paragraphs[]` structure (returned when smart_format
+ * + diarize are enabled). Falls back to '' so callers can use the plain
+ * `transcript` string when paragraphs are absent (e.g. very short clips
+ * with a single speaker may omit them).
+ */
+function formatDiarized(alt: DGAlternative): string {
+  const paragraphs = alt.paragraphs?.paragraphs;
+  if (!paragraphs || paragraphs.length === 0) return '';
+
+  const lines: string[] = [];
+  for (const p of paragraphs) {
+    const sentences = p.sentences ?? [];
+    if (sentences.length === 0) continue;
+    const text = sentences.map((s) => s.text).join(' ').trim();
+    if (!text) continue;
+    const start = typeof p.start === 'number' ? p.start : sentences[0]?.start ?? 0;
+    const speaker = typeof p.speaker === 'number' ? `Falante ${p.speaker + 1}` : 'Falante';
+    lines.push(`[${fmtTs(start)} · ${speaker}] ${text}`);
+  }
+  return lines.join('\n\n');
 }
 
 /**
@@ -93,7 +148,11 @@ const MAX_AUDIO_BYTES = 200 * 1024 * 1024; // 200MB (~2h of audio)
 
 export async function downloadYouTubeAudio(youtubeUrl: string): Promise<Buffer> {
   const tmpDir = os.tmpdir();
-  const tmpFile = path.join(tmpDir, `yt-audio-${Date.now()}.wav`);
+  // m4a keeps the AAC stream from YouTube without re-encoding to WAV.
+  // WAV at quality 0 was ~10MB/min — a 1h video filled ~600MB and OOM'd the
+  // 512MB container. m4a stays under ~1MB/min, and Deepgram accepts it
+  // natively as audio/mp4.
+  const tmpFile = path.join(tmpDir, `yt-audio-${Date.now()}.m4a`);
 
   try {
     // YouTube ramped up anti-bot in 2025. Each `youtube:player_client` value
@@ -109,7 +168,7 @@ export async function downloadYouTubeAudio(youtubeUrl: string): Promise<Buffer> 
     const { stderr } = await execFileAsync('yt-dlp', [
       '--no-playlist',
       '--extract-audio',
-      '--audio-format', 'wav',
+      '--audio-format', 'm4a',
       '--audio-quality', '0',
       '--max-filesize', '200m',
       '--socket-timeout', '30',
@@ -131,16 +190,16 @@ export async function downloadYouTubeAudio(youtubeUrl: string): Promise<Buffer> 
       console.log('yt-dlp stderr:', sanitize(stderr));
     }
 
-    // yt-dlp appends format extension before converting, check both patterns
-    const wavFile = fs.existsSync(tmpFile) ? tmpFile : null;
-    const webmBase = tmpFile.replace('.wav', '.webm');
-    const possibleFile = wavFile || (fs.existsSync(webmBase) ? webmBase : null);
+    // yt-dlp may produce m4a, webm, or rarely .opus depending on stream
+    const prefix = tmpFile.replace(/\.m4a$/, '');
+    const candidates = [tmpFile, `${prefix}.webm`, `${prefix}.opus`, `${prefix}.aac`];
+    const possibleFile = candidates.find((f) => fs.existsSync(f)) ?? null;
 
     if (!possibleFile) {
       // List what files were actually created
       const dir = path.dirname(tmpFile);
-      const prefix = path.basename(tmpFile).replace('.wav', '');
-      const files = fs.readdirSync(dir).filter(f => f.includes(prefix));
+      const baseName = path.basename(prefix);
+      const files = fs.readdirSync(dir).filter(f => f.includes(baseName));
       console.error('yt-dlp output files:', sanitize(files.join(',')));
       throw new Error('yt-dlp did not produce output file');
     }
@@ -178,8 +237,10 @@ export async function downloadYouTubeAudio(youtubeUrl: string): Promise<Buffer> 
 
     throw new Error('Falha ao baixar audio do YouTube. Verifique o link e tente novamente.');
   } finally {
-    // Clean up any temp files
-    try { fs.unlinkSync(tmpFile); } catch { /* ignore */ }
-    try { fs.unlinkSync(tmpFile.replace('.wav', '.webm')); } catch { /* ignore */ }
+    // Clean up any temp files yt-dlp may have produced
+    const prefix = tmpFile.replace(/\.m4a$/, '');
+    for (const ext of ['.m4a', '.webm', '.opus', '.aac']) {
+      try { fs.unlinkSync(`${prefix}${ext}`); } catch { /* ignore */ }
+    }
   }
 }

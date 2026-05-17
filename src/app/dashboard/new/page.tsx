@@ -20,6 +20,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { FileUploader } from '@/components/transcription/FileUploader';
 import { YouTubeInput } from '@/components/transcription/YouTubeInput';
 import { LiveRecorder } from '@/components/transcription/LiveRecorder';
+import { PromptPresets } from '@/components/transcription/PromptPresets';
 import { Header } from '@/components/layout/Header';
 import { addTranscription } from '@/lib/storage';
 import { sanitizePrompt } from '@/lib/validation';
@@ -320,6 +321,7 @@ function NewTranscriptionContent() {
                     />
                     <div className="space-y-2">
                       <Label htmlFor="file-prompt">{t('new.file.promptLabel')}</Label>
+                      <PromptPresets onSelect={setFilePrompt} />
                       <Textarea
                         id="file-prompt"
                         placeholder={t('new.file.promptPlaceholder')}
@@ -390,6 +392,7 @@ function NewTranscriptionContent() {
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="youtube-prompt">{t('new.file.promptLabel')}</Label>
+                      <PromptPresets onSelect={setYoutubePrompt} />
                       <Textarea
                         id="youtube-prompt"
                         placeholder={t('new.youtube.promptPlaceholder')}
@@ -454,6 +457,7 @@ function NewTranscriptionContent() {
                   {realtimeTranscript && (
                     <div className="space-y-2">
                       <Label htmlFor="realtime-prompt">{t('new.file.promptLabel')}</Label>
+                      <PromptPresets onSelect={setRealtimePrompt} />
                       <Textarea
                         id="realtime-prompt"
                         placeholder={t('new.realtime.promptPlaceholder')}

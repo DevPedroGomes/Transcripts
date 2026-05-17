@@ -23,6 +23,7 @@ import { formatDuration, formatDate, getSourceIcon } from '@/lib/formatters';
 import { Textarea } from '@/components/ui/textarea';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { useLocale } from '@/hooks/use-locale';
+import { PromptPresets } from '@/components/transcription/PromptPresets';
 
 export default function TranscriptionDetails() {
   const params = useParams<{ id: string }>();
@@ -295,6 +296,7 @@ export default function TranscriptionDetails() {
                     <h3 className="font-semibold">{t('detail.reprocess.title')}</h3>
                   </CardHeader>
                   <CardContent className="space-y-4">
+                    <PromptPresets onSelect={setReprocessPrompt} />
                     <Textarea
                       placeholder={t('detail.reprocess.placeholder')}
                       value={reprocessPrompt}
@@ -336,7 +338,14 @@ export default function TranscriptionDetails() {
                   <p className="text-sm text-muted-foreground">
                     {t('detail.reprocess.cta')}
                   </p>
-                  <Button variant="outline" size="sm" onClick={() => setShowReprocess(true)}>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setReprocessPrompt(transcription.prompt ?? '');
+                      setShowReprocess(true);
+                    }}
+                  >
                     <RefreshCw className="h-4 w-4 mr-2" />
                     {t('detail.reprocess.ctaButton')}
                   </Button>

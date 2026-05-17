@@ -168,6 +168,17 @@ const translations = {
     'recorder.error.unknown': 'Erro desconhecido. Tente novamente.',
     'recorder.error.token': 'Falha ao obter token de transcricao.',
 
+    // Prompt presets
+    'presets.label': 'Sugestoes rapidas',
+    'presets.summary.label': 'Resumo executivo',
+    'presets.summary.prompt': 'Faca um resumo executivo em 3-5 paragrafos, com tom profissional, destacando os pontos principais discutidos.',
+    'presets.actions.label': 'Extrair acoes',
+    'presets.actions.prompt': 'Liste todas as acoes a serem tomadas (action items) em formato de checklist, indicando o responsavel quando mencionado.',
+    'presets.minutes.label': 'Ata de reuniao',
+    'presets.minutes.prompt': 'Estruture uma ata de reuniao com: Participantes, Pauta, Decisoes tomadas, Pendencias e Proximos passos.',
+    'presets.questions.label': 'Perguntas levantadas',
+    'presets.questions.prompt': 'Liste todas as perguntas, duvidas e questoes em aberto levantadas durante a conversa.',
+
     // Footer
     'footer.copyright': 'MeetingsTranscript',
   },
@@ -338,6 +349,17 @@ const translations = {
     'recorder.error.connection_closed': 'Connection to the transcription service was unexpectedly closed.',
     'recorder.error.unknown': 'Unknown error. Please try again.',
     'recorder.error.token': 'Failed to obtain a transcription token.',
+
+    // Prompt presets
+    'presets.label': 'Quick suggestions',
+    'presets.summary.label': 'Executive summary',
+    'presets.summary.prompt': 'Write an executive summary in 3-5 paragraphs, professional tone, highlighting the main points discussed.',
+    'presets.actions.label': 'Action items',
+    'presets.actions.prompt': 'List all action items as a checklist, indicating the responsible person when mentioned.',
+    'presets.minutes.label': 'Meeting minutes',
+    'presets.minutes.prompt': 'Structure meeting minutes with: Participants, Agenda, Decisions made, Pending items and Next steps.',
+    'presets.questions.label': 'Questions raised',
+    'presets.questions.prompt': 'List all questions, doubts and open issues raised during the conversation.',
 
     // Footer
     'footer.copyright': 'MeetingsTranscript',
