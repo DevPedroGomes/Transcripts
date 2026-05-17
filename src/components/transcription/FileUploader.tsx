@@ -3,6 +3,7 @@
 import { useCallback, useRef, useState } from 'react';
 import { Upload, X, AlertCircle, Music } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useLocale } from '@/hooks/use-locale';
 
 interface FileUploaderProps {
   onFileChange: (file: File | null) => void;
@@ -14,9 +15,10 @@ interface FileUploaderProps {
 export function FileUploader({
   onFileChange,
   onError,
-  maxSizeMB = 500,
+  maxSizeMB = 50,
   acceptedFileTypes = ['.mp3', '.wav', '.m4a', '.ogg'],
 }: FileUploaderProps) {
+  const { t } = useLocale();
   const [file, setFile] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isDragActive, setIsDragActive] = useState(false);
@@ -33,14 +35,14 @@ export function FileUploader({
       );
 
       if (!isAcceptedType) {
-        const errorMsg = `Formato não suportado. Tipos permitidos: ${acceptedFileTypes.join(', ')}`;
+        const errorMsg = t('uploader.errorType', { types: acceptedFileTypes.join(', ') });
         setError(errorMsg);
         if (onError) onError(errorMsg);
         return;
       }
 
       if (uploadedFile.size > maxSize) {
-        const errorMsg = `O arquivo é muito grande. O tamanho máximo é ${maxSizeMB}MB.`;
+        const errorMsg = t('uploader.errorSize', { size: maxSizeMB });
         setError(errorMsg);
         if (onError) onError(errorMsg);
         return;
@@ -50,7 +52,7 @@ export function FileUploader({
       setError(null);
       onFileChange(uploadedFile);
     },
-    [acceptedFileTypes, maxSize, maxSizeMB, onError, onFileChange]
+    [acceptedFileTypes, maxSize, maxSizeMB, onError, onFileChange, t]
   );
 
   const removeFile = () => {
@@ -108,12 +110,10 @@ export function FileUploader({
           <div className="flex flex-col items-center justify-center">
             <Upload className="h-10 w-10 text-muted-foreground mb-4" />
             <p className="mb-2 text-sm font-semibold">
-              {isDragActive
-                ? 'Solte o arquivo aqui'
-                : 'Clique para fazer upload ou arraste e solte'}
+              {isDragActive ? t('uploader.drop') : t('uploader.cta')}
             </p>
             <p className="text-xs text-muted-foreground">
-              {acceptedFileTypes.join(', ')} (Max. {maxSizeMB}MB)
+              {t('uploader.maxHint', { types: acceptedFileTypes.join(', '), size: maxSizeMB })}
             </p>
           </div>
         </div>
@@ -131,10 +131,10 @@ export function FileUploader({
             </div>
             <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={removeFile}>
               <X className="h-4 w-4" />
-              <span className="sr-only">Remover arquivo</span>
+              <span className="sr-only">{t('uploader.remove')}</span>
             </Button>
           </div>
-          <p className="text-xs text-muted-foreground mt-1">Pronto para enviar</p>
+          <p className="text-xs text-muted-foreground mt-1">{t('uploader.ready')}</p>
         </div>
       )}
 

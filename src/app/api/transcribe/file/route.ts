@@ -66,9 +66,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Reserve prerecorded budget: estimate 5 min/file.
-    const RESERVE_SECONDS = 300;
-    const reservation = await checkAndReserve('deepgram-prerecorded', RESERVE_SECONDS);
+    // Reserve prerecorded budget based on file size. 8KB/s is the minimum
+    // density for compressed audio (mp3/m4a/aac/ogg/webm) — using it as the
+    // floor overestimates duration in the safe direction. WAV is higher
+    // density (shorter duration per byte), so this never under-reserves.
+    // Cap at 7200s (2h) which is the maximum plausible single transcript.
+    const MIN_BYTES_PER_SECOND = 8000;
+    const reserveSeconds = Math.min(Math.ceil(audioFile.size / MIN_BYTES_PER_SECOND), 7200);
+    const reservation = await checkAndReserve('deepgram-prerecorded', reserveSeconds);
     if (!reservation.ok) {
       return NextResponse.json<TranscribeApiResponse>(
         { success: false, error: 'Limite diario do servico atingido. Tente novamente amanha.' },
@@ -86,10 +91,10 @@ export async function POST(request: NextRequest) {
       transcriptRaw = result.text;
       durationSeconds = result.durationSeconds;
     } catch (e) {
-      await finalize('deepgram-prerecorded', RESERVE_SECONDS, 0).catch(() => {});
+      await finalize('deepgram-prerecorded', reserveSeconds, 0).catch(() => {});
       throw e;
     }
-    await finalize('deepgram-prerecorded', RESERVE_SECONDS, durationSeconds ?? RESERVE_SECONDS).catch(() => {});
+    await finalize('deepgram-prerecorded', reserveSeconds, durationSeconds ?? reserveSeconds).catch(() => {});
 
     // Optional AI processing
     let transcriptProcessed: string | undefined;

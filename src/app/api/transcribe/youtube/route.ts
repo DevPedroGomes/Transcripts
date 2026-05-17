@@ -47,9 +47,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Reserve prerecorded budget: estimate 5 min/video.
-    const RESERVE_SECONDS = 300;
-    const reservation = await checkAndReserve('deepgram-prerecorded', RESERVE_SECONDS);
+    // YouTube duration is unknown before download. Two-phase reservation:
+    //   1) reserve a conservative gate (10 min) just to refuse if nearly full,
+    //   2) after download, top up to match the actual buffer size at 8KB/s,
+    //      which is the lowest-density compressed-audio floor (overestimates
+    //      duration in the safe direction).
+    const GATE_RESERVE_SECONDS = 600;
+    const reservation = await checkAndReserve('deepgram-prerecorded', GATE_RESERVE_SECONDS);
     if (!reservation.ok) {
       return NextResponse.json<TranscribeApiResponse>(
         { success: false, error: 'Limite diario do servico atingido. Tente novamente amanha.' },
@@ -60,16 +64,34 @@ export async function POST(request: NextRequest) {
     // Download YouTube audio
     let transcriptRaw: string;
     let durationSeconds: number | undefined;
+    let totalReserved = GATE_RESERVE_SECONDS;
     try {
       const audioBuffer = await downloadYouTubeAudio(youtubeUrl);
+      const MIN_BYTES_PER_SECOND = 8000;
+      const estimatedFromSize = Math.min(
+        Math.ceil(audioBuffer.length / MIN_BYTES_PER_SECOND),
+        7200
+      );
+      if (estimatedFromSize > GATE_RESERVE_SECONDS) {
+        const topup = estimatedFromSize - GATE_RESERVE_SECONDS;
+        const topupRes = await checkAndReserve('deepgram-prerecorded', topup);
+        if (!topupRes.ok) {
+          await finalize('deepgram-prerecorded', GATE_RESERVE_SECONDS, 0).catch(() => {});
+          return NextResponse.json<TranscribeApiResponse>(
+            { success: false, error: 'Limite diario do servico atingido. Tente novamente amanha.' },
+            { status: 503, headers: { 'Retry-After': String(topupRes.retryAfterSeconds) } }
+          );
+        }
+        totalReserved = estimatedFromSize;
+      }
       const result = await transcribeAudio(audioBuffer);
       transcriptRaw = result.text;
       durationSeconds = result.durationSeconds;
     } catch (e) {
-      await finalize('deepgram-prerecorded', RESERVE_SECONDS, 0).catch(() => {});
+      await finalize('deepgram-prerecorded', totalReserved, 0).catch(() => {});
       throw e;
     }
-    await finalize('deepgram-prerecorded', RESERVE_SECONDS, durationSeconds ?? RESERVE_SECONDS).catch(() => {});
+    await finalize('deepgram-prerecorded', totalReserved, durationSeconds ?? totalReserved).catch(() => {});
 
     // Optional AI processing
     let transcriptProcessed: string | undefined;

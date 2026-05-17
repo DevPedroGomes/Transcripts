@@ -89,6 +89,85 @@ const translations = {
     'detail.source.youtube': 'Video do YouTube',
     'detail.source.realtime': 'Microfone ao Vivo',
 
+    // New transcription page
+    'new.back': 'Voltar',
+    'new.title': 'Nova Transcricao',
+    'new.subtitle': 'Escolha o metodo de transcricao',
+    'new.tab.file': 'Arquivo',
+    'new.tab.youtube': 'YouTube',
+    'new.tab.realtime': 'Ao Vivo',
+
+    'new.file.title': 'Transcrever Arquivo de Audio',
+    'new.file.description': 'MP3, WAV, M4A, OGG, FLAC, WebM, AAC (max 50MB)',
+    'new.file.titleLabel': 'Titulo',
+    'new.file.titlePlaceholder': 'Ex: Reuniao de Planejamento',
+    'new.file.promptLabel': 'Prompt de Processamento (Opcional)',
+    'new.file.promptPlaceholder': 'Ex: Destaque os pontos sobre vendas',
+    'new.file.promptHelp': 'A IA processara a transcricao com base no prompt.',
+    'new.file.errorSelect': 'Selecione um arquivo de audio.',
+    'new.file.errorTitle': 'Informe um titulo.',
+    'new.file.statusUploading': 'Enviando arquivo...',
+    'new.file.statusTranscribing': 'Transcrevendo audio... isso pode levar alguns minutos.',
+    'new.file.statusSaving': 'Salvando...',
+    'new.file.errorTimeout': 'A requisicao expirou. Tente novamente.',
+    'new.file.errorGeneric': 'Falha ao processar o arquivo.',
+
+    'new.youtube.title': 'Transcrever Video do YouTube',
+    'new.youtube.description': 'Cole a URL de um video publico para transcrever o audio.',
+    'new.youtube.titlePlaceholder': 'Ex: Tutorial de Next.js',
+    'new.youtube.urlLabel': 'URL do YouTube',
+    'new.youtube.promptPlaceholder': 'Ex: Extraia os principais conceitos',
+    'new.youtube.errorTitle': 'Informe um titulo.',
+    'new.youtube.errorUrl': 'Forneca uma URL valida do YouTube.',
+    'new.youtube.statusProcessing': 'Baixando e transcrevendo... isso pode levar alguns minutos.',
+    'new.youtube.errorGeneric': 'Falha ao processar o video.',
+
+    'new.realtime.title': 'Transcricao em Tempo Real',
+    'new.realtime.description': 'Use seu microfone para transcrever audio ao vivo.',
+    'new.realtime.promptPlaceholder': 'Ex: Faca um resumo estruturado',
+    'new.realtime.promptHelp': 'A IA processara a transcricao com base no prompt ao salvar.',
+    'new.realtime.errorTitle': 'Informe um titulo.',
+    'new.realtime.errorEmpty': 'Grave uma transcricao primeiro.',
+    'new.realtime.statusProcessing': 'Processando com IA...',
+    'new.realtime.errorGeneric': 'Erro ao salvar.',
+
+    'new.cancel': 'Cancelar',
+    'new.submit': 'Iniciar Transcricao',
+    'new.submitting': 'Processando...',
+    'new.save': 'Salvar Transcricao',
+    'new.saving': 'Salvando...',
+
+    // FileUploader
+    'uploader.drop': 'Solte o arquivo aqui',
+    'uploader.cta': 'Clique para fazer upload ou arraste e solte',
+    'uploader.ready': 'Pronto para enviar',
+    'uploader.remove': 'Remover arquivo',
+    'uploader.errorType': 'Formato nao suportado. Tipos permitidos: {types}',
+    'uploader.errorSize': 'O arquivo e muito grande. O tamanho maximo e {size}MB.',
+    'uploader.maxHint': '{types} (Max. {size}MB)',
+
+    // YouTubeInput
+    'youtubeInput.placeholder': 'https://www.youtube.com/watch?v=...',
+    'youtubeInput.errorUrl': 'Por favor, insira uma URL valida do YouTube',
+    'youtubeInput.videoLabel': 'Video',
+    'youtubeInput.previewDescription': 'Este video sera processado para transcricao.',
+    'youtubeInput.lengthHint': 'A transcricao de videos longos pode levar mais tempo. Recomendamos videos de ate 2 horas.',
+
+    // LiveRecorder
+    'recorder.unsupported': 'Seu navegador nao suporta gravacao de audio. Use Chrome, Edge ou Firefox.',
+    'recorder.start': 'Iniciar Gravacao',
+    'recorder.connecting': 'Conectando...',
+    'recorder.stop': 'Parar',
+    'recorder.retry': 'Tentar Novamente',
+    'recorder.listening': 'Ouvindo... comece a falar.',
+    'recorder.limit': 'Limite de {minutes} minutos por sessao. Transcricao via Deepgram Nova-3 em portugues.',
+    'recorder.permissionDenied': 'Permissao de microfone negada. Habilite o acesso ao microfone nas configuracoes do navegador.',
+    'recorder.error.connection_failed': 'Falha ao conectar com o servico de transcricao.',
+    'recorder.error.connection_timeout': 'Timeout ao conectar com o servico de transcricao.',
+    'recorder.error.connection_closed': 'Conexao com o servico foi encerrada inesperadamente.',
+    'recorder.error.unknown': 'Erro desconhecido. Tente novamente.',
+    'recorder.error.token': 'Falha ao obter token de transcricao.',
+
     // Footer
     'footer.copyright': 'MeetingsTranscript',
   },
@@ -181,6 +260,85 @@ const translations = {
     'detail.source.youtube': 'YouTube Video',
     'detail.source.realtime': 'Live Microphone',
 
+    // New transcription page
+    'new.back': 'Back',
+    'new.title': 'New Transcription',
+    'new.subtitle': 'Choose the transcription method',
+    'new.tab.file': 'File',
+    'new.tab.youtube': 'YouTube',
+    'new.tab.realtime': 'Live',
+
+    'new.file.title': 'Transcribe Audio File',
+    'new.file.description': 'MP3, WAV, M4A, OGG, FLAC, WebM, AAC (max 50MB)',
+    'new.file.titleLabel': 'Title',
+    'new.file.titlePlaceholder': 'E.g.: Planning Meeting',
+    'new.file.promptLabel': 'Processing Prompt (Optional)',
+    'new.file.promptPlaceholder': 'E.g.: Highlight points about sales',
+    'new.file.promptHelp': 'AI will process the transcription based on the prompt.',
+    'new.file.errorSelect': 'Select an audio file.',
+    'new.file.errorTitle': 'Enter a title.',
+    'new.file.statusUploading': 'Uploading file...',
+    'new.file.statusTranscribing': 'Transcribing audio... this may take a few minutes.',
+    'new.file.statusSaving': 'Saving...',
+    'new.file.errorTimeout': 'Request timed out. Please try again.',
+    'new.file.errorGeneric': 'Failed to process the file.',
+
+    'new.youtube.title': 'Transcribe YouTube Video',
+    'new.youtube.description': 'Paste the URL of a public video to transcribe the audio.',
+    'new.youtube.titlePlaceholder': 'E.g.: Next.js Tutorial',
+    'new.youtube.urlLabel': 'YouTube URL',
+    'new.youtube.promptPlaceholder': 'E.g.: Extract the main concepts',
+    'new.youtube.errorTitle': 'Enter a title.',
+    'new.youtube.errorUrl': 'Provide a valid YouTube URL.',
+    'new.youtube.statusProcessing': 'Downloading and transcribing... this may take a few minutes.',
+    'new.youtube.errorGeneric': 'Failed to process the video.',
+
+    'new.realtime.title': 'Real-time Transcription',
+    'new.realtime.description': 'Use your microphone to transcribe audio live.',
+    'new.realtime.promptPlaceholder': 'E.g.: Create a structured summary',
+    'new.realtime.promptHelp': 'AI will process the transcription based on the prompt when saving.',
+    'new.realtime.errorTitle': 'Enter a title.',
+    'new.realtime.errorEmpty': 'Record a transcription first.',
+    'new.realtime.statusProcessing': 'Processing with AI...',
+    'new.realtime.errorGeneric': 'Error saving.',
+
+    'new.cancel': 'Cancel',
+    'new.submit': 'Start Transcription',
+    'new.submitting': 'Processing...',
+    'new.save': 'Save Transcription',
+    'new.saving': 'Saving...',
+
+    // FileUploader
+    'uploader.drop': 'Drop the file here',
+    'uploader.cta': 'Click to upload or drag and drop',
+    'uploader.ready': 'Ready to send',
+    'uploader.remove': 'Remove file',
+    'uploader.errorType': 'Unsupported format. Allowed types: {types}',
+    'uploader.errorSize': 'The file is too large. Maximum size is {size}MB.',
+    'uploader.maxHint': '{types} (Max. {size}MB)',
+
+    // YouTubeInput
+    'youtubeInput.placeholder': 'https://www.youtube.com/watch?v=...',
+    'youtubeInput.errorUrl': 'Please enter a valid YouTube URL',
+    'youtubeInput.videoLabel': 'Video',
+    'youtubeInput.previewDescription': 'This video will be processed for transcription.',
+    'youtubeInput.lengthHint': 'Transcribing long videos may take longer. We recommend videos up to 2 hours.',
+
+    // LiveRecorder
+    'recorder.unsupported': 'Your browser does not support audio recording. Use Chrome, Edge or Firefox.',
+    'recorder.start': 'Start Recording',
+    'recorder.connecting': 'Connecting...',
+    'recorder.stop': 'Stop',
+    'recorder.retry': 'Try Again',
+    'recorder.listening': 'Listening... start speaking.',
+    'recorder.limit': '{minutes}-minute limit per session. Transcription via Deepgram Nova-3 in Portuguese.',
+    'recorder.permissionDenied': 'Microphone permission denied. Enable microphone access in your browser settings.',
+    'recorder.error.connection_failed': 'Failed to connect to the transcription service.',
+    'recorder.error.connection_timeout': 'Timed out connecting to the transcription service.',
+    'recorder.error.connection_closed': 'Connection to the transcription service was unexpectedly closed.',
+    'recorder.error.unknown': 'Unknown error. Please try again.',
+    'recorder.error.token': 'Failed to obtain a transcription token.',
+
     // Footer
     'footer.copyright': 'MeetingsTranscript',
   },
@@ -190,7 +348,11 @@ export type TranslationKey = keyof typeof translations.pt;
 
 export function getTranslation(locale: Locale) {
   const dict = translations[locale];
-  return function t(key: TranslationKey): string {
-    return dict[key] ?? key;
+  return function t(key: TranslationKey, vars?: Record<string, string | number>): string {
+    const template = dict[key] ?? key;
+    if (!vars) return template;
+    return template.replace(/\{(\w+)\}/g, (_, name) =>
+      vars[name] !== undefined ? String(vars[name]) : `{${name}}`
+    );
   };
 }

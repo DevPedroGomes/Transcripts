@@ -6,12 +6,14 @@ import { Mic, Square, RotateCcw } from 'lucide-react';
 import { useRealtimeTranscription } from '@/hooks/useRealtimeTranscription';
 import { REALTIME_MAX_DURATION_MS } from '@/lib/constants';
 import { useEffect } from 'react';
+import { useLocale } from '@/hooks/use-locale';
 
 interface LiveRecorderProps {
   onTranscriptionComplete: (transcript: string, durationSeconds: number) => void;
 }
 
 export function LiveRecorder({ onTranscriptionComplete }: LiveRecorderProps) {
+  const { t } = useLocale();
   const { state, error, interimText, finalText, elapsedSeconds, start, stop, reset, setOnAutoStop } =
     useRealtimeTranscription();
 
@@ -48,18 +50,25 @@ export function LiveRecorder({ onTranscriptionComplete }: LiveRecorderProps) {
   if (!isSupported) {
     return (
       <Alert>
-        <AlertDescription>
-          Seu navegador nao suporta gravacao de audio. Use Chrome, Edge ou Firefox.
-        </AlertDescription>
+        <AlertDescription>{t('recorder.unsupported')}</AlertDescription>
       </Alert>
     );
   }
+
+  const translateError = (code: string | null): string | null => {
+    if (!code) return null;
+    if (code === 'permission_denied') return t('recorder.permissionDenied');
+    if (code === 'connection_failed' || code === 'connection_timeout' || code === 'connection_closed') {
+      return t(`recorder.error.${code}` as Parameters<typeof t>[0]);
+    }
+    return code;
+  };
 
   return (
     <div className="space-y-5">
       {error && (
         <Alert variant="destructive">
-          <AlertDescription>{error}</AlertDescription>
+          <AlertDescription>{translateError(error)}</AlertDescription>
         </Alert>
       )}
 
@@ -68,14 +77,14 @@ export function LiveRecorder({ onTranscriptionComplete }: LiveRecorderProps) {
         {state === 'idle' && !hasTranscript && (
           <Button type="button" onClick={start} className="gap-2" size="lg">
             <Mic className="h-5 w-5" />
-            Iniciar Gravacao
+            {t('recorder.start')}
           </Button>
         )}
 
         {isRequesting && (
           <Button disabled size="lg" className="gap-2">
             <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current" />
-            Conectando...
+            {t('recorder.connecting')}
           </Button>
         )}
 
@@ -98,7 +107,7 @@ export function LiveRecorder({ onTranscriptionComplete }: LiveRecorderProps) {
               className="gap-2"
             >
               <Square className="h-4 w-4" />
-              Parar
+              {t('recorder.stop')}
             </Button>
           </div>
         )}
@@ -106,14 +115,17 @@ export function LiveRecorder({ onTranscriptionComplete }: LiveRecorderProps) {
         {state === 'error' && (
           <Button type="button" onClick={reset} variant="outline" className="gap-2">
             <RotateCcw className="h-4 w-4" />
-            Tentar Novamente
+            {t('recorder.retry')}
           </Button>
         )}
       </div>
 
       {/* Live transcript display */}
       {(isRecording || hasTranscript) && (
-        <div className="rounded-lg border bg-muted/40 p-5 min-h-[140px] max-h-[320px] overflow-y-auto">
+        <div
+          className="rounded-lg border bg-muted/40 p-5 min-h-[140px] max-h-[320px] overflow-y-auto"
+          aria-live="polite"
+        >
           {finalText && <span className="text-sm leading-relaxed">{finalText}</span>}
           {interimText && (
             <span className="text-sm text-muted-foreground italic">
@@ -123,15 +135,14 @@ export function LiveRecorder({ onTranscriptionComplete }: LiveRecorderProps) {
           )}
           {isRecording && !finalText && !interimText && (
             <p className="text-sm text-muted-foreground animate-pulse">
-              Ouvindo... comece a falar.
+              {t('recorder.listening')}
             </p>
           )}
         </div>
       )}
 
       <p className="text-xs text-muted-foreground text-center">
-        Limite de {maxSeconds / 60} minutos por sessao. Transcricao via Deepgram Nova-3 em
-        portugues.
+        {t('recorder.limit', { minutes: maxSeconds / 60 })}
       </p>
     </div>
   );

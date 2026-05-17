@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { AlertCircle, Youtube } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { useLocale } from '@/hooks/use-locale';
 
 interface YouTubeInputProps {
   onUrlChange: (url: string) => void;
@@ -12,6 +13,7 @@ interface YouTubeInputProps {
 }
 
 export function YouTubeInput({ onUrlChange, onError, inputId }: YouTubeInputProps) {
+  const { t } = useLocale();
   const [url, setUrl] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isValid, setIsValid] = useState(false);
@@ -60,7 +62,7 @@ export function YouTubeInput({ onUrlChange, onError, inputId }: YouTubeInputProp
     const id = parseYouTubeUrl(newUrl);
 
     if (!id) {
-      const errorMsg = 'Por favor, insira uma URL válida do YouTube';
+      const errorMsg = t('youtubeInput.errorUrl');
       setError(errorMsg);
       setIsValid(false);
       setThumbnail(null);
@@ -81,7 +83,7 @@ export function YouTubeInput({ onUrlChange, onError, inputId }: YouTubeInputProp
       <Input
         id={inputId}
         type="text"
-        placeholder="https://www.youtube.com/watch?v=..."
+        placeholder={t('youtubeInput.placeholder')}
         value={url}
         onChange={handleUrlChange}
         className={
@@ -101,7 +103,7 @@ export function YouTubeInput({ onUrlChange, onError, inputId }: YouTubeInputProp
           <div className="relative aspect-video">
             <img
               src={thumbnail}
-              alt={`Video: ${videoId}`}
+              alt={`${t('youtubeInput.videoLabel')}: ${videoId}`}
               className="w-full h-full object-cover"
             />
             <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
@@ -109,9 +111,9 @@ export function YouTubeInput({ onUrlChange, onError, inputId }: YouTubeInputProp
             </div>
           </div>
           <div className="p-3">
-            <h3 className="font-medium">Video: {videoId}</h3>
+            <h3 className="font-medium">{t('youtubeInput.videoLabel')}: {videoId}</h3>
             <p className="text-sm text-muted-foreground mt-1">
-              Este vídeo será processado para transcrição.
+              {t('youtubeInput.previewDescription')}
             </p>
           </div>
         </div>
@@ -119,7 +121,7 @@ export function YouTubeInput({ onUrlChange, onError, inputId }: YouTubeInputProp
 
       <Alert className="bg-primary/5 text-muted-foreground border-border">
         <AlertDescription>
-          A transcrição de vídeos longos pode levar mais tempo. Recomendamos vídeos de até 2 horas.
+          {t('youtubeInput.lengthHint')}
         </AlertDescription>
       </Alert>
     </div>

@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { randomUUID } from 'crypto';
 import { REALTIME_COOLDOWN_MS } from '@/lib/constants';
 import { getClientIP } from '@/lib/rate-limiter';
 import { checkAndReserve, finalize } from '@/lib/budget';
 import { sanitize } from '@/lib/log-sanitize';
+import { recordReservation } from '@/lib/realtime-sessions';
 
 // In-memory rate limiting (acceptable for single-instance showcase)
 const sessions = new Map<string, { activeAt: number }>();
@@ -66,8 +68,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: false, error: check.reason }, { status: 429 });
   }
 
-  // Reserve realtime budget: estimate 3 minutes per session.
-  const RESERVE_SECONDS = 180;
+  // Reserve realtime budget: gate with 60s (just enough to refuse if the
+  // bucket is nearly full). The /realtime/finalize endpoint reconciles
+  // with the actual session duration when the client stops. If finalize
+  // is never called (tab close, crash), the entry expires after 10 min
+  // with no refund — bounded abuse window since cooldown is 30s.
+  const RESERVE_SECONDS = 60;
   const reservation = await checkAndReserve('deepgram-realtime', RESERVE_SECONDS);
   if (!reservation.ok) {
     return NextResponse.json(
@@ -110,7 +116,13 @@ export async function POST(request: NextRequest) {
     // Track session
     sessions.set(ip, { activeAt: Date.now() });
 
-    return NextResponse.json({ success: true, key: data.key });
+    // Issue a sessionId so the client can call /realtime/finalize with the
+    // real duration once the session ends. The reservation is held until
+    // then (or until the 10-min sweeper drops it).
+    const sessionId = randomUUID();
+    recordReservation(sessionId, RESERVE_SECONDS);
+
+    return NextResponse.json({ success: true, key: data.key, sessionId });
   } catch (error) {
     console.error('Realtime token error:', sanitize(String(error)));
     // Best effort: if we crashed before issuing a key, free the reservation.

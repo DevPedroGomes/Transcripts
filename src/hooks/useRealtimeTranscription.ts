@@ -22,7 +22,34 @@ export function useRealtimeTranscription() {
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const startTimeRef = useRef<number>(0);
   const finalTextRef = useRef('');
+  const sessionIdRef = useRef<string | null>(null);
   const onAutoStopRef = useRef<((transcript: string, durationSeconds: number) => void) | null>(null);
+
+  // Finalize the server-side budget reservation with the real session
+  // duration. Best-effort: failure here is invisible to the user — the
+  // server-side sweeper drops stale reservations after 10 min anyway.
+  const finalizeSession = useCallback((durationSeconds: number) => {
+    const sessionId = sessionIdRef.current;
+    sessionIdRef.current = null;
+    if (!sessionId) return;
+    const payload = JSON.stringify({ sessionId, durationSeconds });
+    // sendBeacon survives navigation/tab-close, which is the leak case
+    // we care most about. Fall back to fetch() with keepalive for the
+    // dev path (sendBeacon is sometimes flaky in jsdom).
+    try {
+      if (typeof navigator !== 'undefined' && typeof navigator.sendBeacon === 'function') {
+        const blob = new Blob([payload], { type: 'application/json' });
+        navigator.sendBeacon('/api/transcribe/realtime/finalize', blob);
+        return;
+      }
+    } catch { /* fall through */ }
+    fetch('/api/transcribe/realtime/finalize', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: payload,
+      keepalive: true,
+    }).catch(() => {});
+  }, []);
 
   // Keep ref in sync for use in callbacks
   useEffect(() => {
@@ -49,7 +76,13 @@ export function useRealtimeTranscription() {
       wsRef.current.close();
       wsRef.current = null;
     }
-  }, []);
+    if (sessionIdRef.current) {
+      const duration = startTimeRef.current
+        ? Math.max(0, Math.floor((Date.now() - startTimeRef.current) / 1000))
+        : 0;
+      finalizeSession(duration);
+    }
+  }, [finalizeSession]);
 
   const start = useCallback(async (): Promise<void> => {
     setError(null);
@@ -75,6 +108,7 @@ export function useRealtimeTranscription() {
         stream.getTracks().forEach((t) => t.stop());
         throw new Error(tokenData.error || 'Falha ao obter token.');
       }
+      sessionIdRef.current = tokenData.sessionId ?? null;
       streamRef.current = stream;
 
       // 3. Open WebSocket to Deepgram
@@ -83,8 +117,8 @@ export function useRealtimeTranscription() {
       wsRef.current = ws;
 
       await new Promise<void>((resolve, reject) => {
-        ws.onerror = () => reject(new Error('Falha ao conectar com o servico de transcricao.'));
-        const timeout = setTimeout(() => reject(new Error('Timeout ao conectar.')), 5000);
+        ws.onerror = () => reject(new Error('connection_failed'));
+        const timeout = setTimeout(() => reject(new Error('connection_timeout')), 5000);
         ws.onopen = () => {
           clearTimeout(timeout);
           resolve();
@@ -118,14 +152,14 @@ export function useRealtimeTranscription() {
       ws.onclose = () => {
         if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
           setState('error');
-          setError('Conexao com o servico foi encerrada inesperadamente.');
+          setError('connection_closed');
           cleanup();
         }
       };
 
       ws.onerror = () => {
         setState('error');
-        setError('Erro na conexao com o servico de transcricao.');
+        setError('connection_failed');
         cleanup();
       };
 
@@ -166,13 +200,13 @@ export function useRealtimeTranscription() {
     } catch (err) {
       cleanup();
       setState('error');
-      const message = err instanceof Error ? err.message : 'Erro desconhecido.';
-      if (message.includes('Permission denied') || message.includes('NotAllowedError')) {
-        setError(
-          'Permissao de microfone negada. Habilite o acesso ao microfone nas configuracoes do navegador.'
-        );
+      const raw = err instanceof Error ? err.message : 'unknown_error';
+      if (raw.includes('Permission denied') || raw.includes('NotAllowedError')) {
+        setError('permission_denied');
+      } else if (raw === 'connection_failed' || raw === 'connection_timeout' || raw === 'connection_closed') {
+        setError(raw);
       } else {
-        setError(message);
+        setError(raw);
       }
     }
   }, [cleanup]);
@@ -206,6 +240,21 @@ export function useRealtimeTranscription() {
   useEffect(() => {
     return () => cleanup();
   }, [cleanup]);
+
+  // Tab close: refund the realtime reservation with whatever elapsed time
+  // we have. sendBeacon (inside finalizeSession) survives the unload.
+  useEffect(() => {
+    const handler = () => {
+      if (sessionIdRef.current) {
+        const duration = startTimeRef.current
+          ? Math.max(0, Math.floor((Date.now() - startTimeRef.current) / 1000))
+          : 0;
+        finalizeSession(duration);
+      }
+    };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [finalizeSession]);
 
   return {
     state,
