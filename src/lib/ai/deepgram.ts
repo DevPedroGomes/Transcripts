@@ -96,6 +96,16 @@ export async function downloadYouTubeAudio(youtubeUrl: string): Promise<Buffer> 
   const tmpFile = path.join(tmpDir, `yt-audio-${Date.now()}.wav`);
 
   try {
+    // YouTube ramped up anti-bot in 2025. Each `youtube:player_client` value
+    // hits a different ingest endpoint with different fingerprinting. Trying
+    // multiple in one invocation gives yt-dlp the best chance of finding a
+    // path that doesn't trigger the "Sign in to confirm you are not a bot"
+    // wall — especially from cloud-provider IPs which YouTube flags hard.
+    // Order matters: ios first because mobile clients see fewer challenges
+    // for cloud egress, then web_safari, then default web.
+    //
+    // --force-ipv4 because some VPS IPv6 ranges are pre-flagged by YouTube.
+    // --user-agent matches a real browser to avoid easy fingerprinting.
     const { stderr } = await execFileAsync('yt-dlp', [
       '--no-playlist',
       '--extract-audio',
@@ -108,6 +118,11 @@ export async function downloadYouTubeAudio(youtubeUrl: string): Promise<Buffer> 
       '--no-write-info-json',
       '--no-write-playlist-metafiles',
       '--cache-dir', '/tmp/ytdlp-cache',
+      '--force-ipv4',
+      '--user-agent', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15',
+      '--extractor-args', 'youtube:player_client=ios,web_safari,web',
+      '--retries', '3',
+      '--fragment-retries', '3',
       '-o', tmpFile,
       youtubeUrl,
     ], { timeout: 120_000 });

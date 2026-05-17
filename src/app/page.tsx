@@ -73,8 +73,21 @@ export default function Home() {
 
       <main className="flex-1">
         {/* Hero */}
-        <section className="py-20 md:py-28">
+        <section className="relative overflow-hidden py-20 md:py-28">
+          <div
+            aria-hidden
+            className="absolute inset-0 -z-10 pointer-events-none"
+            style={{
+              background:
+                "radial-gradient(ellipse 70% 50% at 50% 0%, rgba(251,146,60,0.10), transparent 60%), radial-gradient(ellipse 50% 35% at 85% 30%, rgba(99,102,241,0.06), transparent 70%)",
+            }}
+          />
           <div className="max-w-6xl mx-auto px-6 sm:px-8 flex flex-col items-center text-center">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white border border-neutral-200 text-xs text-neutral-600 mb-6 shadow-sm">
+              <span className="h-1.5 w-1.5 rounded-full bg-orange-500" />
+              <span className="font-mono">Audio · YouTube · Live mic</span>
+            </div>
+
             <h1 className="max-w-3xl text-4xl font-semibold tracking-tighter sm:text-5xl md:text-6xl leading-[0.95] text-neutral-900">
               {t('hero.title')}
             </h1>
@@ -92,6 +105,25 @@ export default function Home() {
                   {t('hero.dashboard')}
                 </Button>
               </Link>
+            </div>
+
+            {/* Animated waveform */}
+            <div className="mt-12 flex items-end justify-center gap-1.5 h-20 max-w-md mx-auto" aria-hidden>
+              {Array.from({ length: 40 }).map((_, i) => {
+                const delay = (i % 10) * 0.07;
+                const heightSeed = 25 + ((i * 41) % 75);
+                return (
+                  <span
+                    key={i}
+                    className="w-1.5 rounded-full bg-gradient-to-t from-orange-300/40 via-orange-500/80 to-pink-500/70 animate-pulse"
+                    style={{
+                      height: `${heightSeed}%`,
+                      animationDelay: `${delay}s`,
+                      animationDuration: "1.4s",
+                    }}
+                  />
+                );
+              })}
             </div>
           </div>
         </section>
