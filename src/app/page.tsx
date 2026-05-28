@@ -85,7 +85,7 @@ export default function Home() {
           <div className="max-w-6xl mx-auto px-6 sm:px-8 flex flex-col items-center text-center">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white border border-neutral-200 text-xs text-neutral-600 mb-6 shadow-sm">
               <span className="h-1.5 w-1.5 rounded-full bg-orange-500" />
-              <span className="font-mono">Audio · YouTube · Live mic</span>
+              <span className="font-mono">{t('hero.badge')}</span>
             </div>
 
             <h1 className="max-w-3xl text-4xl font-semibold tracking-tighter sm:text-5xl md:text-6xl leading-[0.95] text-neutral-900">
