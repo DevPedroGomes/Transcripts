@@ -182,6 +182,7 @@ const translations = {
 
     // Footer
     'footer.copyright': 'MeetingsTranscript',
+    'footer.builtBy': 'Construído por',
   },
 
   en: {
@@ -365,6 +366,7 @@ const translations = {
 
     // Footer
     'footer.copyright': 'MeetingsTranscript',
+    'footer.builtBy': 'Built by',
   },
 } as const;
 

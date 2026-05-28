@@ -204,11 +204,19 @@ export default function Home() {
         </section>
       </main>
 
-      <footer className="border-t border-neutral-200 py-6 bg-white">
-        <div className="max-w-6xl mx-auto px-6 sm:px-8 text-center">
+      <footer className="border-t border-neutral-200 py-8 bg-white">
+        <div className="max-w-6xl mx-auto px-6 sm:px-8 flex flex-col items-center gap-3 text-center sm:flex-row sm:justify-between sm:text-left">
           <p className="text-sm text-neutral-400">
-            &copy; {new Date().getFullYear()} {t('footer.copyright')}
+            &copy; {new Date().getFullYear()} {t('footer.copyright')} · {t('footer.builtBy')}{' '}
+            <a href="https://pgdev.com.br" className="font-medium text-neutral-600 hover:text-neutral-900 transition-colors">
+              Pedro Gomes
+            </a>
           </p>
+          <div className="flex items-center gap-4 text-sm text-neutral-400">
+            <a href="https://github.com/devpedrogomes" className="hover:text-neutral-900 transition-colors" target="_blank" rel="noopener noreferrer">GitHub</a>
+            <a href="https://www.linkedin.com/in/devpgomes" className="hover:text-neutral-900 transition-colors" target="_blank" rel="noopener noreferrer">LinkedIn</a>
+            <a href="https://pgdev.com.br" className="hover:text-neutral-900 transition-colors" target="_blank" rel="noopener noreferrer">Portfolio</a>
+          </div>
         </div>
       </footer>
     </div>
