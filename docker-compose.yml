@@ -1,5 +1,8 @@
 services:
   app:
+    # build-no-runner: o runner do GitHub builda e da push nesta image (GHCR, minusculo);
+    # a VPS so faz `docker compose pull`. `build:` so e usado pelo runner.
+    image: ghcr.io/devpedrogomes/transcripts:latest
     build: .
     container_name: transcripts-app
     restart: unless-stopped
